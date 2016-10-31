@@ -11,7 +11,7 @@ library(lubridate)
 #OPP LEVEL ROLLUP
 
 #Adam's fread()
-dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 4Q16 20.10.16.csv")
+dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 4Q16 27.10.16.csv")
 years.pipe <- as.data.frame(dtl.open)
 
 
@@ -24,6 +24,7 @@ detach("package:zoo", unload=TRUE)
 
 
 years.pipe$Opp.Create.Date <- with(years.pipe, mdy(Opp.Create.Date))
+years.pipe$S.S.Update.Date <- with(years.pipe, mdy(S.S.Update.Date))
 years.pipe$create.year <- format(years.pipe$Opp.Create.Date, "%Y")
 years.pipe$create.month <- format(years.pipe$Opp.Create.Date, "%m")
 years.pipe$tcv <- as.numeric(years.pipe$Rev.Signings.Value...K.)
@@ -40,7 +41,8 @@ data.pipe <- dplyr::tbl_df(years.pipe) %>% #specify the data table to summarize
   group_by(Opp.No, Brand.Sub.Group, SSM.Step.Name, Previous.Sales.Stage,
            IMT, GBS.Bus.Unit.Level.2) %>% #specify which records/variables to keep
   summarise(tcv = sum(tcv), #define new variables using functions
-            created = min(Opp.Create.Date)) %>%
+            created = min(Opp.Create.Date),
+            s.s.updated = max(S.S.Update.Date)) %>%
   filter(tcv > 0) #remove 0 or neg tcvs
 
 
@@ -208,4 +210,4 @@ open.pipe <- subset(opp.data, dupe == FALSE & Sector.F != "")
 open.pipe.slim <- open.pipe
 open.pipe.slim <- subset(open.pipe.slim, create.year == 2016)
 
-write.csv(open.pipe, "Open Pipeline_10.13.2016_v1.csv")
+write.csv(open.pipe, "Open Pipeline_10.27.2016_v1.csv")

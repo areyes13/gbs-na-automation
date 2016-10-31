@@ -188,6 +188,7 @@ detach("package:zoo", unload=TRUE)
 
 
 years.pipe$Opp.Create.Date <- with(years.pipe, mdy(Opp.Create.Date))
+years.pipe$S.S.Update.Date <- with(years.pipe, mdy(S.S.Update.Date))
 years.pipe$create.year <- format(years.pipe$Opp.Create.Date, "%Y")
 years.pipe$create.month <- format(years.pipe$Opp.Create.Date, "%m")
 years.pipe$tcv <- as.numeric(years.pipe$Rev.Signings.Value...K.)
@@ -205,9 +206,9 @@ data.pipe <- dplyr::tbl_df(years.pipe) %>% #specify the data table to summarize
            #Industry, 
            GBS.Bus.Unit.Level.2) %>% #specify which records/variables to keep
   summarise(tcv = sum(tcv), #define new variables using functions
-            created = min(Opp.Create.Date)
+            created = min(Opp.Create.Date),
             #updated = max(S.S.Update.Date)
-            ) %>%
+            s.s.updated = max(S.S.Update.Date)) %>%
   filter(tcv > 0) #remove 0 or neg tcvs
 
 #create size categories based on total opp val
@@ -1136,8 +1137,17 @@ dpuid.dp.match <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.dp.match.
 dpuid.dp.match$DP.mobin <- with(dpuid.dp.match, paste(AGDPID, mo.bin, sep = " "))
 abs.bind$DP.mobin <- with(abs.bind, paste(Deal.Profile, mo.bin, sep = " "))
 
-dpuid.dp.match$yield <- abs.bind$yield[match(dpuid.dp.match$DP.mobin, abs.bind$DP.mobin)]
+dpuid.dp.match$yield <- abs.bind$won.tcv[match(dpuid.dp.match$DP.mobin, abs.bind$DP.mobin)]
+dpuid.dp.match$yield <- abs.bind$total.sum.tcv[match(dpuid.dp.match$DP.mobin, abs.bind$DP.mobin)]
 dpuid.dp.match$yield[is.na(dpuid.dp.match$yield)] <- 0
+
+dpuid.dp.match$source <- "Space Junk"
+dpuid.dp.match$sj.anchor <- floor_date(Sys.Date(), unit = "months")
+dpuid.dp.match$sj.id <- with(dpuid.dp.match, paste(DPUID, source, sj.anchor, sept = ""))
+cube.sj <- subset(cube.2.5, source == "Space Junk")
+cube.sj$sj.id <- with(cube.sj, paste(DPUID, source, create.m.yr))
+dpuid.dp.match$space.junk <- cube.sj$Total.TCV[match(dpuid.dp.match$sj.id, cube.sj$sj.id)]
+dpuid.dp.match$yield.sj <- with(dpuid.dp.match, won.tcv/(total.sum.tcv+Total.TCV))
 
 abs.yields <-dcast(dpuid.dp.match, DPUID + AGDPID ~ mo.bin, value.var = c('yield'))
 
@@ -2591,111 +2601,6 @@ rel.l.dplist <- rbind(rel.l.dp1, rel.l.dp2, rel.l.dp3, rel.l.dp4, rel.l.dp5,
 rel.l.yields <-dcast(rel.l.dplist, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
 
 
-#OI Heat Map------------------------------------------------------------------------------------
-setwd("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map")
-
-OI.files <- list.files(pattern = ".csv")
-directory.path <- "~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map"
-
-open.df <- matrix(nrow = 0, ncol = 13)
-colnames(open.df) <- c("Opp.No", "Brand.Sub.Group", "IMT", "GBS.Bus.Unit.Level.2", "Industry",
-                       "SSM.Step.Name", "Previous.Sales.Stage", "tcv", "created", "source.date",
-                       "create.stage", "create.month", "create.year")
-library(lubridate)
-library(dplyr)
-
-for(i in 1:length(OI.files)){
-
-source.date <- substr(OI.files[i], nchar(OI.files[i]) - 11, nchar(OI.files[i]) - 4)
-source.date <- dmy(source.date)
-directory <- paste(directory.path, OI.files[i], sep = "/")
-single.file <- read.csv(directory)
-
-single.file$Opp.Create.Date <- with(single.file, as.Date(Opp.Create.Date, format = "%m/%d/%Y"))
-single.file$Opp.Create.Date <- with(single.file, ymd(Opp.Create.Date))
-
-roll.up <- dplyr::tbl_df(single.file) %>%
-  group_by(Opp.No, Brand.Sub.Group, IMT, GBS.Bus.Unit.Level.2, Industry,
-           SSM.Step.Name, Previous.Sales.Stage) %>%
-  summarise(tcv = sum(Rev.Signings.Value...K.),
-            created = min(Opp.Create.Date)) %>%
-  filter(source.date-days(7) <= created)
-
-roll.up$source.date <- source.date
-roll.up$create.month <- with(roll.up, format(created, "%m"))
-roll.up$create.year <- with(roll.up, format(created, "%Y"))
-
-
-open.df <- rbind(roll.up, open.df)
-
-
-}
-
-setwd("~/NA GBS Strategic Work/R Content/Outputs")
-
-OI.heat.map <- open.df
-
-OI.heat.map$create.stage <- with(OI.heat.map,
-                    ifelse(Previous.Sales.Stage == '*', as.character(SSM.Step.Name),
-                      ifelse(Previous.Sales.Stage == 1 | Previous.Sales.Stage == 2 |
-                            Previous.Sales.Stage == 3, 'Identified',
-                          ifelse(SSM.Step.Name == 'Identified' &
-                               Previous.Sales.Stage != '*', 'Identified',
-                           ifelse(SSM.Step.Name == 'Validated' &
-                                  Previous.Sales.Stage != '*', 'Identified',
-                              ifelse(SSM.Step.Name == 'Qualified' &
-                                   Previous.Sales.Stage != '*', 'Identified',
-                               ifelse(SSM.Step.Name == 'Conditional Agreement' &
-                                    Previous.Sales.Stage != '*' & Previous.Sales.Stage != 1 &
-                                      Previous.Sales.Stage != 2 & Previous.Sales.Stage != 3, 'Validated', "")))))))
-
-OI.heat.map$create.stage.2 <- with(OI.heat.map, ifelse(create.stage == 'Identified', 'Early Stage',
-                                                'Validated or later'))
-
-OI.heat.map <-subset(OI.heat.map, SSM.Step.Name != 'Won')
-OI.heat.map <-subset(OI.heat.map, create.stage != 'Won')
-
-OI.heat.map$deal.size <- with(OI.heat.map,
-                               factor(ifelse(tcv < 1000, '<$1M',
-                                             ifelse(tcv >= 1000 & tcv <5000, '$1M to <$5M',
-                                                    ifelse(tcv >= 5000 & tcv < 10000, '$5M to <$10M',
-                                                           ifelse(tcv >= 10000, '>$10M', NA))))))
-
-OI.heat.map$service.line <- ifelse(OI.heat.map$Brand.Sub.Group == 'AD&I' | OI.heat.map$Brand.Sub.Group == 'AD&F',
-                          'AIC', ifelse(OI.heat.map$Brand.Sub.Group == 'BPS', 'BPS',
-                                        ifelse(OI.heat.map$Brand.Sub.Group == 'Digital', 'Digital',
-                                               ifelse(OI.heat.map$Brand.Sub.Group == 'EA', 'EA', OI.heat.map$Brand.Sub.Group))))
-
-OI.heat.map$sector <- with(OI.heat.map,
-                         ifelse(GBS.Bus.Unit.Level.2 == 'US-FSS', 'US FSS',
-                           ifelse(GBS.Bus.Unit.Level.2 == 'US-DIST', 'US DIST',
-                             ifelse(GBS.Bus.Unit.Level.2 == 'US-COMM', 'US COMM',
-                              ifelse(GBS.Bus.Unit.Level.2 == 'US-IND', 'US IND',
-                               ifelse(GBS.Bus.Unit.Level.2 == 'US-PUB', 'US PUB',
-                                ifelse(GBS.Bus.Unit.Level.2 == 'Canada', 'Canada',
-                                 ifelse(GBS.Bus.Unit.Level.2 == 'US Federal', 'US Federal', ""))))))))
-
-OI.heat.map.2 <- dplyr::tbl_df(OI.heat.map) %>%
-  group_by(sector, create.month, create.stage.2) %>%
-  summarise(tcv.m = sum(tcv)/1000) %>%
-  filter(sector != "")
-
-
-colnames(OI.heat.map.2)[1] <- "sector"
-OI.heat.map.2$create.month <- with(OI.heat.map.2, as.numeric(create.month))
-OI.heat.map.3 <- subset(OI.heat.map.2, create.month > 05)
-
-OI.heat.map.NA <- dplyr::tbl_df(OI.heat.map.3) %>%
-  group_by(create.month, create.stage) %>%
-  summarise(tcv.m = sum(tcv.m))
-
-OI.heat.map.NA$sector <- "NA"
-OI.heat.map.NA <- OI.heat.map.NA[,c(4,1,2,3)]
-OI.heat.map.NA <- as.data.frame(OI.heat.map.NA)
-OI.heat.map.3 <- as.data.frame(OI.heat.map.3)
-
-OI.heat.map.F <- rbind(OI.heat.map.3, OI.heat.map.NA)
-
 #Outputs-------------------------------------------------------------------------------------
 #Closed Pipe at Opp Level
 write.csv(closed.pipe, "Closed Pipeline_v6.csv")
@@ -2720,9 +2625,6 @@ write.csv(rel.w.yields, 'Relative Yield Curves 08-29-16 v4.csv', na = "0")
 
 #Relative Lost Yield Curves
 write.csv(rel.l.yields, 'Relative Lost Yield Curves 08-29-16 v2.csv', na = "0")
-
-#Heat Map
-write.csv(OI.heat.map.F, 'OI heat map data_10202016_v4.csv')
 
 #Save Objects
 save(open.pipe, monthly.create.data, abs.yields, rel.w.yields, rel.l.yields, 
