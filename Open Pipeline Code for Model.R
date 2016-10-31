@@ -1,17 +1,38 @@
 #Working Directory - SCIP Server
-setwd("~/NA GBS Strategic Work/R Content/Outputs")
+setwd("~/gbs-na-automation")
+
+library(XLConnect)
+library(lubridate)
+options(java.parameters = "-Xmx8g")
+
+# EXCEL MODEL -------------------------------------------------------------
+#load EXCEL INPUT DATA workbook
+
+directory <- paste0(getwd(), "/Input Data")
+filename <- list.files(directory)
+
+wb <- loadWorkbook(filename)
+getSheets(wb)
+
+#GET DATA FROM WORKBOOK
+dtl.open <- readWorksheet(wb, 'rp_GBS_Top_Opportunity_Detail', startRow = 4)
+
+#CLEAN UP DATES 
+dtl.open$S.S.Update.Date <- ymd(data$S.S.Update.Date)
+dtl.open$Opp.Create.Date <- ymd(data$Opp.Create.Date)
+
+#save as csv
+write.csv(dtl.open, file = gsub(filename, pattern = 'xlsx', replacement = 'csv'))
 
 #Open Pipe for model------------------------------------------------------------------------------------
 library(data.table)
 library(scales)
 library(reshape2)
 library(stringi)
-library(lubridate)
 
 #OPP LEVEL ROLLUP
 
 #Adam's fread()
-dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 4Q16 27.10.16.csv")
 years.pipe <- as.data.frame(dtl.open)
 
 
@@ -23,8 +44,6 @@ detach("package:data.table", unload=TRUE)
 detach("package:zoo", unload=TRUE)
 
 
-years.pipe$Opp.Create.Date <- with(years.pipe, mdy(Opp.Create.Date))
-years.pipe$S.S.Update.Date <- with(years.pipe, mdy(S.S.Update.Date))
 years.pipe$create.year <- format(years.pipe$Opp.Create.Date, "%Y")
 years.pipe$create.month <- format(years.pipe$Opp.Create.Date, "%m")
 years.pipe$tcv <- as.numeric(years.pipe$Rev.Signings.Value...K.)
