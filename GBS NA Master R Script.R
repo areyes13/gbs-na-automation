@@ -1,5 +1,28 @@
 #Working Directory - SCIP Server
-setwd("~/NA GBS Strategic Work/R Content/Outputs")
+setwd("~/gbs-na-automation")
+
+library(XLConnect)
+library(lubridate)
+options(java.parameters = "-Xmx8g")
+
+# EXCEL MODEL -------------------------------------------------------------
+#load EXCEL INPUT DATA workbook
+
+directory <- paste0(getwd(), "/Input Data - Open")
+filename <- list.files(directory)
+
+wb <- loadWorkbook(filename)
+getSheets(wb)
+
+#GET DATA FROM WORKBOOK
+dtl.open <- readWorksheet(wb, 'rp_GBS_Top_Opportunity_Detail', startRow = 4)
+
+#CLEAN UP DATES 
+dtl.open$S.S.Update.Date <- ymd(data$S.S.Update.Date)
+dtl.open$Opp.Create.Date <- ymd(data$Opp.Create.Date)
+
+#save as csv
+write.csv(dtl.open, file = gsub(filename, pattern = 'xlsx', replacement = 'csv'))
 
 #Packages to install
 #install.packages("data.table")
@@ -20,7 +43,7 @@ library(stringi)
 # OPP LEVEL ROLLUP (2015-2016)
 #Read in file from shared
 #FIX THIS FREAD SINCE YOU ADDED FOLDERS ON THIS DEVICE
-dtl.closed <- fread("~/NA GBS Strategic Work/Data Sources/Closed Pipeline/EIW GBS NA 2012to2016Q3- First Stage.csv")
+dtl.closed <- fread("~/NA GBS Strategic Work/Data Sources/Closed Pipeline/EIW GBS NA 2012to2016Q3- First Stage.csv") #Edit this
 years <- as.data.frame(dtl.closed)
 
 new <- gsub("\\s", ".", colnames(years))
@@ -175,7 +198,7 @@ library(lubridate)
 # OPP LEVEL ROLLUP
 
 #Adam's fread()
-dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 4Q16 20.10.16.csv")
+dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 4Q16 20.10.16.csv")#Edit
 years.pipe <- as.data.frame(dtl.open)
 
 
@@ -1133,7 +1156,7 @@ abs.bind <- rbind(abs.dp.1, abs.dp.2, abs.dp.3, abs.dp.4, abs.dp.5, abs.dp.6, ab
 
 
 #Expanded Curves to DPUID
-dpuid.dp.match <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.dp.match.csv")
+dpuid.dp.match <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.dp.match.csv") #edit - also make space junk edits to relative curves
 dpuid.dp.match$DP.mobin <- with(dpuid.dp.match, paste(AGDPID, mo.bin, sep = " "))
 abs.bind$DP.mobin <- with(abs.bind, paste(Deal.Profile, mo.bin, sep = " "))
 
