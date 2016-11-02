@@ -225,7 +225,8 @@ opp.data$Sector.F <- opp.data$Sector.IMT
 opp.data$TCV <- opp.data$tcv
 opp.data["source"] <- "Open"
 
-open.pipe <- subset(opp.data, dupe == FALSE & Sector.F != "")
+opp.data.2 <- subset(opp.data, dupe == FALSE)
+open.pipe <- subset(opp.data, Sector.F != "")
 open.pipe.slim <- open.pipe
 open.pipe.slim <- subset(open.pipe.slim, create.year == 2016)
 
