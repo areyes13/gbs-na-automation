@@ -230,4 +230,27 @@ open.pipe <- subset(opp.data, Sector.F != "")
 open.pipe.slim <- open.pipe
 open.pipe.slim <- subset(open.pipe.slim, create.year == 2016)
 
-write.csv(open.pipe, "Open Pipeline_10.27.2016_v1.csv")
+#write.csv(open.pipe, "Open Pipeline_10.27.2016_v1.csv")
+
+#### AUTOMATING OUTPUT TO FUTURE YIELD EXCEL
+#load OPEN PIPE workbook
+wb <- loadWorkbook("Future Yield Model - template.xlsx")
+getSheets(wb)
+
+#write OPEN PIPE DATA to wb
+writeWorksheet(wb, 
+               open.pipe, 
+               sheet = "Pipe.Data", startRow = 1, startCol = 1,
+               header = TRUE)
+
+#write RELATIVE YIELDS to wb - MANUAL
+#rel.l.yields$status <- 'NOT WON'
+#rel.w.yields$status <- 'WON'
+#rel.yields <- rbind(rel.w.yields, rel.l.yields)
+
+#writeWorksheet(wb, 
+#               rel.yields, 
+#               sheet = "Relative Yield Curves", startRow = 1, startCol = 1,
+#               header = TRUE)
+
+saveWorkbook(wb, file = paste0('Future Yield Model  - ', Sys.Date(), '.xlsx'))
