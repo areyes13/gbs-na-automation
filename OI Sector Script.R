@@ -9,7 +9,7 @@ load("~/SametimeFileTransfers/cube.saved")
 
 #OI by Sector by quarter
 oi.sector.2016 <- cube.F %>%
-  filter(create.m.yr >= ymd("2016-01-01") & create.m.yr <= ymd("2016-09-30")) %>%
+  filter(source != "Space Junke", create.m.yr >= ymd("2016-01-01") & create.m.yr <= ymd("2016-09-30")) %>%
   group_by(Sector) %>%
   summarise(oi.sector.quarter = sum(Total.TCV))
 
@@ -19,36 +19,36 @@ oi.sector.1Q2016 <- cube.F %>%
   summarise(oi.sector.quarter = sum(Total.TCV))
 
 oi.sector.2Q2016 <- cube.F %>%
-  filter(create.m.yr >= ymd("2016-04-01") & create.m.yr <= ymd("2016-06-30")) %>%
+  filter(source != "Space Junke", create.m.yr >= ymd("2016-04-01") & create.m.yr <= ymd("2016-06-30")) %>%
   group_by(Sector) %>%
   summarise(oi.sector.quarter = sum(Total.TCV))
 
 oi.sector.3Q2016 <- cube.F %>%
-  filter(create.m.yr >= ymd("2016-07-01") & create.m.yr <= ymd("2016-09-30")) %>%
+  filter(source != "Space Junke", create.m.yr >= ymd("2016-07-01") & create.m.yr <= ymd("2016-09-30")) %>%
   group_by(Sector) %>%
   summarise(oi.sector.quarter = sum(Total.TCV))
 
 
 #OI NA total 2016 & Quarter
 oi.na.2016 <- cube.F %>% 
-  filter(create.m.yr >= ymd("2016-01-01") & create.m.yr <= ymd("2016-09-30")) %>%
+  filter(source != "Space Junke", create.m.yr >= ymd("2016-01-01") & create.m.yr <= ymd("2016-09-30")) %>%
   summarise(na.total.oi = sum(Total.TCV))
 
 oi.na.1Q2016 <- cube.F %>% 
-  filter(create.m.yr >= ymd("2016-01-01") & create.m.yr <= ymd("2016-03-30")) %>%
+  filter(source != "Space Junke", create.m.yr >= ymd("2016-01-01") & create.m.yr <= ymd("2016-03-30")) %>%
   summarise(na.total.oi = sum(Total.TCV))
 
 oi.na.2Q2016 <- cube.F %>% 
-  filter(create.m.yr >= ymd("2016-04-01") & create.m.yr <= ymd("2016-06-30")) %>%
+  filter(source != "Space Junke", create.m.yr >= ymd("2016-04-01") & create.m.yr <= ymd("2016-06-30")) %>%
   summarise(na.total.oi = sum(Total.TCV))
 
 oi.na.3Q2016 <- cube.F %>% 
-  filter(create.m.yr >= ymd("2016-07-01") & create.m.yr <= ymd("2016-09-30")) %>%
+  filter(source != "Space Junke", create.m.yr >= ymd("2016-07-01") & create.m.yr <= ymd("2016-09-30")) %>%
   summarise(na.total.oi = sum(Total.TCV))
 
 #OI NA 2014 - 2016
 oi.2014.2016.chart <- cube.F %>%
-  filter(create.m.yr >= ymd("2014-01-01") & create.m.yr <= ymd("2016-09-30")) %>% 
+  filter(source != "Space Junke", create.m.yr >= ymd("2014-01-01") & create.m.yr <= ymd("2016-09-30")) %>% 
   group_by(create.m.yr) %>%
   summarise(na.monthly.tcv = sum(Total.TCV))
 
