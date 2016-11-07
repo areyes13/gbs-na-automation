@@ -14,7 +14,7 @@ oi.sector.2016 <- cube.F %>%
   summarise(oi.sector.quarter = sum(Total.TCV))
 
 oi.sector.1Q2016 <- cube.F %>%
-  filter(create.m.yr >= ymd("2016-01-01") & create.m.yr <= ymd("2016-03-30")) %>%
+  filter(source != "Space Junke", create.m.yr >= ymd("2016-01-01") & create.m.yr <= ymd("2016-03-30")) %>%
   group_by(Sector) %>%
   summarise(oi.sector.quarter = sum(Total.TCV))
 
