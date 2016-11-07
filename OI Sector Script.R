@@ -33,5 +33,7 @@ oi.2014.2016.chart <- cube.F %>%
   summarise(na.monthly.tcv = sum(Total.TCV))
 
 #OI NA Chart
-ggplot(oi.2014.2016.chart,aes(x = create.m.yr, y = (na.monthly.tcv/1000000000)))
- 
+ggplot(oi.2014.2016.chart, aes(x = create.m.yr, y = (na.monthly.tcv/1000000000))) + 
+  geom_point(size=2, color="black") +
+  geom_smooth(method = lm, se = FALSE)
+#we may want to use excel for now...
