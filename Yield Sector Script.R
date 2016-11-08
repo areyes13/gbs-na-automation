@@ -2,6 +2,8 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 
+load("~/SametimeFileTransfers/cubes.saved")
+
 #Yield by Sector
 yield.sector.1Q2016 <- closed.cube.F %>%
   filter(date >= ymd("2016-01-01") & date <=ymd("2016-03-30")) %>%
