@@ -17,13 +17,13 @@ adj.tbl <- closed.cube.F %>%
 tbl15 <- adj.tbl %>%
   filter(year == 2015) %>%
   group_by(Deal.Size) %>%
-  summarize(yield15 = sum(Won)/sum(Won, Not.Won, Space.Junk))
+  summarize(yield15 = sum(Won)/sum(Won, Not.Won))
 
 #split 2016 - calculate yield & then merge in 2015 to get adjustment factor
 tbl16 <- adj.tbl %>%
   filter(year == 2016, Sector != '') %>%
   group_by(Deal.Size, Sector) %>%
-  summarize(yield16 = sum(Won)/sum(Won, Not.Won, Space.Junk)) %>%
+  summarize(yield16 = sum(Won)/sum(Won, Not.Won)) %>%
   left_join(tbl15, by = 'Deal.Size') %>%
   mutate(adj.f = yield16/yield15)
 
