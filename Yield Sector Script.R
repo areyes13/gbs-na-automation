@@ -49,6 +49,10 @@ yield.na.2016 <- closed.cube.F %>%
   filter(date >= ymd("2016-01-01") & date<=ymd("2016-09-30")) %>%
   summarise(yield = sum(Won)/ sum(Won, Not.Won))
 
+yield.na.1Q3Q2015 <- closed.cube.F %>%
+  filter(date >= ymd("2015-01-01") & date<=ymd("2015-09-30")) %>%
+  summarise(yield = sum(Won)/ sum(Won, Not.Won))
+
 write.csv(yield.na.1Q2016, "yield.na.1Q2016.csv")
 write.csv(yield.na.2Q2016, "yield.na.2Q2016.csv")
 write.csv(yield.na.3Q2016, "yield.na.3Q2016.csv")
