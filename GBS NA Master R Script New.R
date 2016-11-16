@@ -1246,16 +1246,27 @@ abs.bind <- rbind(abs.dp.1, abs.dp.2, abs.dp.3, abs.dp.4, abs.dp.5, abs.dp.6, ab
                   abs.dp.27, abs.dp.30, abs.dp.32, abs.dp.33, abs.dp.34, abs.dp.36, abs.dp.39,
                   abs.dp.42, abs.dp.44, abs.dp.45)
 
+abs.yields <-dcast(abs.bind, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
+write.csv(abs.yields, "unsmoothed abs yields.csv")
 
+unsmoothed.abs.yields <- read.csv("~/NA GBS Strategic Work/R Content/Outputs/unsmoothed abs yields.csv")
+
+library(tidyr)
+#test
+
+abs.melt <- unsmoothed.abs.yields %>%
+  gather(MonthBin, yield, X0:X24)
+
+abs.melt$MonthBin <- sapply(strsplit(abs.melt$MonthBin, split='X', fixed=TRUE), function(x) (x[2]))
 
 #Expanded Curves to DPUID
 dpuid.dp.match <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.dp.match.csv") #Edit
 dpuid.dp.match$DP.mobin <- with(dpuid.dp.match, paste(AGDPID, mo.bin, sep = " "))
-abs.bind$DP.mobin <- with(abs.bind, paste(Deal.Profile, mo.bin, sep = " "))
+abs.melt$DP.mobin <- with(abs.melt, paste(Deal.Profile, MonthBin, sep = " "))
 
-dpuid.dp.match$won.tcv <- abs.bind$won.tcv[match(dpuid.dp.match$DP.mobin, abs.bind$DP.mobin)]
-dpuid.dp.match$total.sum.tcv <- abs.bind$total.sum.tcv[match(dpuid.dp.match$DP.mobin, abs.bind$DP.mobin)]
-dpuid.dp.match$yield <- abs.bind$yield[match(dpuid.dp.match$DP.mobin, abs.bind$DP.mobin)]
+dpuid.dp.match$won.tcv <- abs.melt$won.tcv[match(dpuid.dp.match$DP.mobin, abs.melt$DP.mobin)]
+dpuid.dp.match$total.sum.tcv <- abs.melt$total.sum.tcv[match(dpuid.dp.match$DP.mobin, abs.melt$DP.mobin)]
+dpuid.dp.match$yield <- abs.melt$yield[match(dpuid.dp.match$DP.mobin, abs.melt$DP.mobin)]
 dpuid.dp.match$yield[is.na(dpuid.dp.match$yield)] <- 0
 
 #dpuid.dp.match$source <- "Space Junk"
@@ -1266,7 +1277,7 @@ dpuid.dp.match$yield[is.na(dpuid.dp.match$yield)] <- 0
 #dpuid.dp.match$space.junk <- cube.sj$Total.TCV[match(dpuid.dp.match$sj.id, cube.sj$sj.id)]
 #dpuid.dp.match$yield.sj <- with(dpuid.dp.match, won.tcv/(total.sum.tcv+Total.TCV))
 
-abs.yields <-dcast(dpuid.dp.match, DPUID + AGDPID ~ mo.bin, value.var = c('yield'))
+abs.yields.F <-dcast(dpuid.dp.match, DPUID + AGDPID + Sector + Deal.Size ~ mo.bin, value.var = c('yield'))
 
 
 #Curve smoothing
@@ -2755,8 +2766,8 @@ write.csv(open.pipe.slim, "Open Pipeline Slim_9.29.2016_v1.csv")
 write.csv(monthly.create.data, 'Monthy Create Rate Tab_11082016_v3.csv')
 
 #Absolute Yield Curves
-save(abs.yields, rel.w.yields, rel.l.yields, file = "yield curves.saved")
-write.csv(abs.yields, 'Absolute Yield Curves 11-11-16 v4.csv', na = "0")
+save(abs.yields.F, rel.w.yields, rel.l.yields, file = "yield curves.saved")
+write.csv(abs.yields.F, 'Absolute Yield Curves 11-14-16 v5.csv', na = "0")
 
 #Relative Won Yield Curves
 write.csv(rel.w.yields, 'Relative Yield Curves 11-11-16 v5.csv', na = "0")
