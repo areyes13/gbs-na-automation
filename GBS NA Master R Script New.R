@@ -27,7 +27,9 @@ write.csv(dtl.open, file = gsub(filename, pattern = 'xlsx', replacement = 'csv')
 
 
 #Working Directory - Adam's Computer
-setwd("~/NA GBS Strategic Work/R Content/Outputs")
+#setwd("~/NA GBS Strategic Work/R Content/Outputs")
+setwd("~/gbs-na-automation/Output Data")
+
 
 #Packages to install
 #install.packages("data.table")
@@ -44,10 +46,12 @@ library(data.table)
 library(scales)
 library(reshape2)
 library(stringi)
+library(readxl)
 
 # OPP LEVEL ROLLUP (2015-2016)
 #Read in file from shared
-dtl.closed <- fread("~/NA GBS Strategic Work/Data Sources/Closed Pipeline/EIW GBS NA 2012to2016Q3- First Stage.csv") #Edit this
+#dtl.closed <- fread("~/NA GBS Strategic Work/Data Sources/Closed Pipeline/EIW GBS NA 2012to2016Q3- First Stage.csv")
+dtl_closed <- read_excel("~/gbs-na-automation/Input Data - Closed/EIW GBS NA 2012to2016Q3- First Stage.xlsx", na = "empty")
 years <- as.data.frame(dtl.closed)
 
 new <- gsub("\\s", ".", colnames(years))
@@ -207,9 +211,12 @@ library(lubridate)
 # OPP LEVEL ROLLUP
 
 #Adam's fread()
-dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 3Q16 29.09.16.csv") #Edit
+#dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 3Q16 29.09.16.csv") #Edit
+setwd("~/gbs-na-automation")
+filename <- list.files(directory)
+dtl.open <- read.csv(filename)
 years.pipe <- as.data.frame(dtl.open)
-
+setwd("~/gbs-na-automation/Output Data")
 
 new <- gsub("\\s", ".", colnames(years.pipe))
 setnames(years.pipe, colnames(years.pipe), new)
@@ -414,7 +421,7 @@ open.pipe.slim <- subset(open.pipe.slim, create.year == 2016)
 
 #The Cube----------------------------------------------------------------------------------
 save(closed.pipe, open.pipe, file = 'open and closed.saved')
-load("~/NA GBS Strategic Work/R Content/Outputs/open and closed.saved")
+#load("~/NA GBS Strategic Work/R Content/Outputs/open and closed.saved")
 
 open.pipe$TID <- with(open.pipe, paste(Opp.No, Service.Line, sep = "-"))
 open.pipe.trash <- filter(open.pipe, SSM.Step.Name == 'Won' & 
@@ -553,9 +560,11 @@ closed.wide <- closed.expanded %>%
          Quarter = lubridate::quarter(date, with_year = T))
 
 rm(created.crud, closed.crud)
+#Adam read in
+#dpuid.map <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.sector.match.csv")
 
-
-dpuid.map <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.sector.match.csv") #Edit
+#Server read in
+dpuid.map <- read.csv("~/gbs-na-automation/Mapping Tables/dpuid.sector.match.csv")
 
 dpuid.map$DPUID <- tolower(dpuid.map$DPUID)
 created.wide$DPUID <- tolower(created.wide$DPUID)
@@ -1249,7 +1258,8 @@ abs.bind <- rbind(abs.dp.1, abs.dp.2, abs.dp.3, abs.dp.4, abs.dp.5, abs.dp.6, ab
 abs.yields <-dcast(abs.bind, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
 write.csv(abs.yields, "unsmoothed abs yields.csv")
 
-unsmoothed.abs.yields <- read.csv("~/NA GBS Strategic Work/R Content/Outputs/unsmoothed abs yields.csv")
+#unsmoothed.abs.yields <- read.csv("~/NA GBS Strategic Work/R Content/Outputs/unsmoothed abs yields.csv")
+unsmoothed.abs.yields <- read.csv("~/gbs-na-automation/Output Data/unsmoothed abs yields.csv")
 
 library(tidyr)
 #test
@@ -1260,7 +1270,12 @@ abs.melt <- unsmoothed.abs.yields %>%
 abs.melt$MonthBin <- sapply(strsplit(abs.melt$MonthBin, split='X', fixed=TRUE), function(x) (x[2]))
 
 #Expanded Curves to DPUID
-dpuid.dp.match <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.dp.match.csv") #Edit
+#Adam read in
+#dpuid.dp.match <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.dp.match.csv")
+
+#Server read in
+dpuid.dp.match <- read.csv("~/gbs-na-automation/Mapping Tables/dpuid.dp.match.csv")
+
 dpuid.dp.match$DP.mobin <- with(dpuid.dp.match, paste(AGDPID, mo.bin, sep = " "))
 abs.melt$DP.mobin <- with(abs.melt, paste(Deal.Profile, MonthBin, sep = " "))
 
