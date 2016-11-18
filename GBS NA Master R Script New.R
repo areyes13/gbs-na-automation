@@ -3,12 +3,14 @@ setwd("~/gbs-na-automation")
 
 library(XLConnect)
 library(lubridate)
-options(java.parameters = "-Xmx8g")
+options(java.parameters = "-Xmx32g")
 
 # EXCEL MODEL -------------------------------------------------------------
 #load EXCEL INPUT DATA workbook
 
 directory <- paste0(getwd(), "/Input Data - Open")
+#stop for only open pipe
+
 filename <- list.files(directory)
 
 wb <- loadWorkbook(filename)
@@ -51,7 +53,7 @@ library(readxl)
 # OPP LEVEL ROLLUP (2015-2016)
 #Read in file from shared
 #dtl.closed <- fread("~/NA GBS Strategic Work/Data Sources/Closed Pipeline/EIW GBS NA 2012to2016Q3- First Stage.csv")
-dtl_closed <- read_excel("~/gbs-na-automation/Input Data - Closed/EIW GBS NA 2012to2016Q3- First Stage.xlsx", na = "empty")
+dtl.closed <- read_excel("~/gbs-na-automation/Input Data - Closed/EIW GBS NA 2012to2016Q3- First Stage.xlsx", na = "empty")
 years <- as.data.frame(dtl.closed)
 
 new <- gsub("\\s", ".", colnames(years))
@@ -207,6 +209,7 @@ library(scales)
 library(reshape2)
 library(stringi)
 library(lubridate)
+library(XLConnect)
 
 # OPP LEVEL ROLLUP
 
@@ -225,8 +228,8 @@ detach("package:splitstackshape", unload=TRUE)
 detach("package:data.table", unload=TRUE)
 
 
-years.pipe$Opp.Create.Date <- with(years.pipe, mdy(Opp.Create.Date))
-years.pipe$S.S.Update.Date <- with(years.pipe, mdy(S.S.Update.Date))
+years.pipe$Opp.Create.Date <- with(years.pipe, ymd(Opp.Create.Date))
+years.pipe$S.S.Update.Date <- with(years.pipe, ymd(S.S.Update.Date))
 years.pipe$create.year <- format(years.pipe$Opp.Create.Date, "%Y")
 years.pipe$create.month <- format(years.pipe$Opp.Create.Date, "%m")
 years.pipe$tcv <- as.numeric(years.pipe$Rev.Signings.Value...K.)
@@ -1258,11 +1261,12 @@ abs.bind <- rbind(abs.dp.1, abs.dp.2, abs.dp.3, abs.dp.4, abs.dp.5, abs.dp.6, ab
 abs.yields <-dcast(abs.bind, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
 write.csv(abs.yields, "unsmoothed abs yields.csv")
 
+#MANUAL SMOOTH REQUIRED
+
 #unsmoothed.abs.yields <- read.csv("~/NA GBS Strategic Work/R Content/Outputs/unsmoothed abs yields.csv")
 unsmoothed.abs.yields <- read.csv("~/gbs-na-automation/Output Data/unsmoothed abs yields.csv")
 
 library(tidyr)
-#test
 
 abs.melt <- unsmoothed.abs.yields %>%
   gather(MonthBin, yield, X0:X24)
@@ -1312,7 +1316,7 @@ abs.yields.F <-dcast(dpuid.dp.match, DPUID + AGDPID + Sector + Deal.Size ~ mo.bi
 
 #}
 
-write.csv(abs.yields.2, "smoothed yields.csv")
+#write.csv(abs.yields.2, "smoothed yields.csv")
 
 #Relative Won Yield Curves-----------------------------------------------------------------------------
 #Deal Profile 1: Identified x All IMT x <$1M x AIC-------------------------------------
@@ -2772,7 +2776,7 @@ write.csv(closed.pipe.slim, "Close Pipeline_Jan2015-June2016_v6.csv")
 write.csv(open.pipe, "Open Pipeline_11.11.2016_v2.csv")
 
 #Open Pipe at Opp Level (open pipe model)
-write.csv(open.pipe, "Open Pipeline_09.29.2016_v2.csv")
+write.csv(open.pipe, "Open Pipeline_10.20.2016_v2.csv")
 
 #Open Pipe at Opp Level for Monthly Create
 write.csv(open.pipe.slim, "Open Pipeline Slim_9.29.2016_v1.csv")
