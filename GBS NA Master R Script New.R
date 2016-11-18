@@ -2767,40 +2767,31 @@ rel.l.yields <-dcast(rel.l.dplist, Deal.Profile + IMT + Service.Line + Deal.Size
 
 #Outputs-------------------------------------------------------------------------------------
 #Closed Pipe at Opp Level
-write.csv(closed.pipe, "Closed Pipeline_v8.csv")
-
-#Closed Pipe for curves
-write.csv(closed.pipe.slim, "Close Pipeline_Jan2015-June2016_v6.csv")
-
-#Open Pipe at Opp Level (cube)
-write.csv(open.pipe, "Open Pipeline_11.11.2016_v2.csv")
+write.csv(closed.pipe, "Closed Pipeline_11.18.16.csv")
 
 #Open Pipe at Opp Level (open pipe model)
-write.csv(open.pipe, "Open Pipeline_10.20.2016_v2.csv")
-
-#Open Pipe at Opp Level for Monthly Create
-write.csv(open.pipe.slim, "Open Pipeline Slim_9.29.2016_v1.csv")
+write.csv(open.pipe, "Open Pipeline_11.18.16.csv")
 
 #Avg Monthly Create Rate
-write.csv(monthly.create.data, 'Monthy Create Rate Tab_11082016_v3.csv')
+write.csv(monthly.create.data, 'Monthy Create Rate Tab_11.18.16.csv')
 
 #Absolute Yield Curves
-save(abs.yields.F, rel.w.yields, rel.l.yields, file = "yield curves.saved")
-write.csv(abs.yields.F, 'Absolute Yield Curves 11-14-16 v5.csv', na = "0")
+#save(abs.yields.F, rel.w.yields, rel.l.yields, file = "yield curves.saved")
+write.csv(abs.yields.F, 'Absolute Yield Curves 11.18.16.csv', na = "0")
 
 #Relative Won Yield Curves
-write.csv(rel.w.yields, 'Relative Yield Curves 11-11-16 v5.csv', na = "0")
+write.csv(rel.w.yields, 'Relative Yield Curves 11.18.16.csv', na = "0")
 
 #Relative Lost Yield Curves
-write.csv(rel.l.yields, 'Relative Lost Yield Curves 11-11-16 v3.csv', na = "0")
+write.csv(rel.l.yields, 'Relative Lost Yield Curves 11.18.16.csv', na = "0")
 
 #Cube
-write.csv(closed.cube.F, 'Close Date Cube.csv')
-write.csv(created.cube.F, 'Create Date Cube.csv')
+write.csv(closed.cube.F, 'Close Date Cube_11.18.16.csv')
+write.csv(created.cube.F, 'Create Date Cube_11.18.16.csv')
 
 #Save Objects
-save(closed.pipe, file = "closedpipe.saved")
-save(open.pipe, monthly.create.data, abs.yields, rel.w.yields, rel.l.yields, 
-     file = "na gbs objects.saved")
+#save(closed.pipe, file = "closedpipe.saved")
+#save(open.pipe, monthly.create.data, abs.yields, rel.w.yields, rel.l.yields, 
+ #    file = "na gbs objects.saved")
 
 save(closed.cube.F, created.cube.F, file = "cubes.saved")
