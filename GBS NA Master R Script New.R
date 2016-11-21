@@ -215,11 +215,16 @@ library(XLConnect)
 
 #Adam's fread()
 #dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 3Q16 29.09.16.csv") #Edit
-setwd("~/gbs-na-automation")
-filename <- list.files(directory)
-dtl.open <- read.csv(filename)
+#setwd("~/gbs-na-automation")
+#filename <- list.files(directory)
+#dtl.open <- read.csv(filename)
+
+#Luyba, use this for now to read in open pipe. This code will read in Oct 6 file from input data - open folder.
+dtl.open <- read.csv("~/gbs-na-automation/Input Data - Open/SMS8021 GBS NA Opportunity Detail - 4Q16 06.10.16.csv")
 years.pipe <- as.data.frame(dtl.open)
 setwd("~/gbs-na-automation/Output Data")
+
+
 
 new <- gsub("\\s", ".", colnames(years.pipe))
 setnames(years.pipe, colnames(years.pipe), new)
@@ -228,8 +233,8 @@ detach("package:splitstackshape", unload=TRUE)
 detach("package:data.table", unload=TRUE)
 
 
-years.pipe$Opp.Create.Date <- with(years.pipe, ymd(Opp.Create.Date))
-years.pipe$S.S.Update.Date <- with(years.pipe, ymd(S.S.Update.Date))
+years.pipe$Opp.Create.Date <- with(years.pipe, mdy(Opp.Create.Date))
+years.pipe$S.S.Update.Date <- with(years.pipe, mdy(S.S.Update.Date))
 years.pipe$create.year <- format(years.pipe$Opp.Create.Date, "%Y")
 years.pipe$create.month <- format(years.pipe$Opp.Create.Date, "%m")
 years.pipe$tcv <- as.numeric(years.pipe$Rev.Signings.Value...K.)
@@ -2786,8 +2791,8 @@ write.csv(rel.w.yields, 'Relative Yield Curves 11.18.16.csv', na = "0")
 write.csv(rel.l.yields, 'Relative Lost Yield Curves 11.18.16.csv', na = "0")
 
 #Cube
-write.csv(closed.cube.F, 'Close Date Cube_11.18.16.csv')
-write.csv(created.cube.F, 'Create Date Cube_11.18.16.csv')
+write.csv(closed.cube.F, 'Close Date Cube_11.21.16.csv')
+write.csv(created.cube.F, 'Create Date Cube_11.21.16.csv')
 
 #Save Objects
 #save(closed.pipe, file = "closedpipe.saved")
