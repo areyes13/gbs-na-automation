@@ -1,9 +1,11 @@
 #Working Directory - SCIP Server
 setwd("~/gbs-na-automation")
+options(java.parameters = "-Xmx1024m")
+Sys.setenv("R_ZIPCMD" = "C:/Rtools/bin/zip.exe")
 
-library(XLConnect)
 library(lubridate)
-options(java.parameters = "-Xmx32g")
+library(stringr)
+library(openxlsx)
 
 # EXCEL MODEL -------------------------------------------------------------
 #load EXCEL INPUT DATA workbook
@@ -13,25 +15,23 @@ directory <- paste0(getwd(), "/Input Data - Open")
 
 filename <- list.files(directory)
 
-wb <- loadWorkbook(filename)
-getSheets(wb)
+library(readxl)
+dtl.open <- read_excel(paste(directory, filename, sep = '/'), 
+                       skip = 2)
 
-#GET DATA FROM WORKBOOK
-dtl.open <- readWorksheet(wb, 'rp_GBS_Top_Opportunity_Detail', startRow = 4)
+#Field Name Cleanup
+colnames(dtl.open) <- str_replace_all(colnames(dtl.open), "[^[:alnum:]]", ".")
 
 #CLEAN UP DATES 
-dtl.open$S.S.Update.Date <- ymd(data$S.S.Update.Date)
-dtl.open$Opp.Create.Date <- ymd(data$Opp.Create.Date)
-
-#save as csv
-write.csv(dtl.open, file = gsub(filename, pattern = 'xlsx', replacement = 'csv'))
-
-
+dtl.open$S.S.Update.Date <- ymd(dtl.open$S.S.Update.Date)
+dtl.open$Opp.Create.Date <- ymd(dtl.open$Opp.Create.Date)
 
 #Working Directory - Adam's Computer
 #setwd("~/NA GBS Strategic Work/R Content/Outputs")
-setwd("~/gbs-na-automation/Output Data")
 
+setwd("~/gbs-na-automation/Output Data")
+#save object
+save(dtl.open, file = "clean open pipe.saved")
 
 #Packages to install
 #install.packages("data.table")
@@ -193,9 +193,6 @@ closed.pipe$TCV <- closed.pipe$new.tcv
 closed.pipe$source <- with(closed.pipe, 
                         ifelse(Open.Won.Lost == 'Won', 'Won', 'Not Won'))
 
-closed.pipe.slim <- subset(closed.pipe, Won.Lost.Year == 2016)
-
-
 #won.create <- closed.pipe %>%
 #  filter(create.year > 2014) %>%
 #  group_by(Create.Stage, create.year, create.month) %>%
@@ -215,26 +212,16 @@ library(XLConnect)
 
 #Adam's fread()
 #dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 3Q16 29.09.16.csv") #Edit
-#setwd("~/gbs-na-automation")
-#filename <- list.files(directory)
-#dtl.open <- read.csv(filename)
-
-#Luyba, use this for now to read in open pipe. This code will read in Oct 6 file from input data - open folder.
-dtl.open <- read.csv("~/gbs-na-automation/Input Data - Open/SMS8021 GBS NA Opportunity Detail - 4Q16 06.10.16.csv")
+#dtl.open <- read.csv("~/gbs-na-automation/Input Data - Open/SMS8021 GBS NA Opportunity Detail - 4Q16 17.11.16.csv")
 years.pipe <- as.data.frame(dtl.open)
 setwd("~/gbs-na-automation/Output Data")
 
-
-
-new <- gsub("\\s", ".", colnames(years.pipe))
-setnames(years.pipe, colnames(years.pipe), new)
-rm(new)
 detach("package:splitstackshape", unload=TRUE)
 detach("package:data.table", unload=TRUE)
 
 
-years.pipe$Opp.Create.Date <- with(years.pipe, mdy(Opp.Create.Date))
-years.pipe$S.S.Update.Date <- with(years.pipe, mdy(S.S.Update.Date))
+#years.pipe$Opp.Create.Date <- with(years.pipe, mdy(Opp.Create.Date))
+#years.pipe$S.S.Update.Date <- with(years.pipe, mdy(S.S.Update.Date))
 years.pipe$create.year <- format(years.pipe$Opp.Create.Date, "%Y")
 years.pipe$create.month <- format(years.pipe$Opp.Create.Date, "%m")
 years.pipe$tcv <- as.numeric(years.pipe$Rev.Signings.Value...K.)
@@ -247,7 +234,7 @@ library(dplyr)
 #use dplyr to rollup data to Opportunity level. Remove opps with tcv of 0 after rolling up
 data.pipe <- dplyr::tbl_df(years.pipe) %>% #specify the data table to summarize
   group_by(Opp.No, Brand.Sub.Group, SSM.Step.Name, Previous.Sales.Stage,
-           IMT, 
+           IMT, Level.17,  
            #Industry, 
            GBS.Bus.Unit.Level.2) %>% #specify which records/variables to keep
   summarise(tcv = sum(tcv), #define new variables using functions
@@ -303,14 +290,11 @@ opp.data$create.date <- as.Date(opp.data$created)
 #                       year = as.numeric(format(opp.data$create.date, format = "%Y")))
 
 
-#Changing sl field name
-opp.data$new.sl <- opp.data$Brand.Sub.Group
-
 #Combining AIC and AD&F
-opp.data$new.sl <- ifelse(opp.data$new.sl == 'AIC' | opp.data$new.sl == 'AD&F' | opp.data$new.sl == 'AD&I',
-                    'AIC', ifelse(opp.data$new.sl == 'BPS', 'BPS',
-                              ifelse(opp.data$new.sl == 'Digital', 'Digital',
-                                 ifelse(opp.data$new.sl == 'EA', 'EA', NA))))
+opp.data$new.sl <- ifelse(opp.data$Level.17 == 'ADI US Federal' | opp.data$Level.17 == 'Application Innovation Consulting',
+                    'AIC', ifelse(opp.data$Level.17 == 'Business Proc Svcs', 'BPS',
+                              ifelse(opp.data$Level.17 == 'Digital', 'Digital',
+                                 ifelse(opp.data$Level.17 == 'Enterprise Applications', 'EA', NA))))
 
 
 #Collapsing IMTs
@@ -425,7 +409,19 @@ open.pipe <- opp.data
 open.pipe <- subset(opp.data, Sector.F != "") #assumption
 #open.pipe <- subset(open.pipe, SSM.Step.Name != 'Won')
 open.pipe.slim <- open.pipe
-open.pipe.slim <- subset(open.pipe.slim, create.year == 2016)
+
+#excel pasting: open pipe
+wb <- openxlsx::loadWorkbook("Future Yield Model - template.xlsx")
+names(wb)
+
+#write OPEN PIPE DATA to wb
+writeData(wb,
+          open.pipe,
+          sheet = "Pipe.Data", startRow = 1, startCol = 1)
+
+# :D
+openxlsx::saveWorkbook(wb, paste0('Future Yield Model  - ', Sys.Date(), '.xlsx'), overwrite = T)
+
 
 #The Cube----------------------------------------------------------------------------------
 save(closed.pipe, open.pipe, file = 'open and closed.saved')
@@ -1303,6 +1299,11 @@ dpuid.dp.match$yield[is.na(dpuid.dp.match$yield)] <- 0
 
 abs.yields.F <-dcast(dpuid.dp.match, DPUID + AGDPID + Sector + Deal.Size ~ mo.bin, value.var = c('yield'))
 
+abs.yields.F$DPUID <- as.character(abs.yields.F$DPUID)
+
+won <- c("Won", NA, NA, NA, rep(1.0, 25))
+
+abs.yields.F <- rbind(abs.yields.F, won)
 
 #Curve smoothing
 #for(i in 1:length(abs.yields.2$DPUID)){
@@ -2769,13 +2770,74 @@ rel.l.dplist <- rbind(rel.l.dp1, rel.l.dp2, rel.l.dp3, rel.l.dp4, rel.l.dp5,
 
 rel.l.yields <-dcast(rel.l.dplist, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
 
+#Adjusting Absolute Curves-----------------------------------------------------------------------
+adj.tbl <- closed.cube.F %>%
+  filter(date >= '2015-01-01',
+         !Sector %in% c('Canada', 'US Federal'),
+         !is.na(Sector)) %>%
+  mutate(year = year(date),
+         DPUID = toupper(DPUID))
+
+#split 2015 - calculate yield
+tbl15 <- adj.tbl %>%
+  filter(year == 2016) %>%
+  group_by(Deal.Size) %>%
+  summarize(yield15 = sum(Won)/sum(Won, Not.Won))
+
+#split 2016 - calculate yield & then merge in 2015 to get adjustment factor
+tbl16 <- adj.tbl %>%
+  filter(year == 2016, Sector != '') %>%
+  group_by(Deal.Size, Sector) %>%
+  summarize(yield16 = sum(Won)/sum(Won, Not.Won)) %>%
+  left_join(tbl15, by = 'Deal.Size') %>%
+  mutate(adj.f = yield16/yield15)
+
+#placeholder object to map in DPUID details
+mapper <- unique(adj.tbl %>% select(DPUID, Size.Type, Create.Stage:Service.Line))
+
+adjusted.abs <- abs.yields.F %>%
+  gather(Month, "yield", `0`:`24`) %>%
+  mutate(DPUID.up = toupper(DPUID),
+         Month = as.numeric(Month)) %>%
+  inner_join(mapper, by = c('DPUID.up'='DPUID')) %>%
+  select(-DPUID.up) %>%
+  left_join(tbl16 %>% select(-starts_with('yield')), by = c('Deal.Size', 'Sector')) %>%
+  mutate(adjusted.yield = adj.f * yield) %>%
+  arrange(DPUID, Month)
+
+rm(tbl15, tbl16, adj.tbl, mapper)
+
+
+# OPEN PIPELINE MODEL THING -----------------------------------------------
+tcv.rollup <- open.pipe %>%
+  filter(deal.profile != 0, SSM.Step.Name != 'Won') %>%
+  group_by(DPUID, Size.Type, deal.profile, age.month) %>%
+  summarise(tcv = sum(TCV, na.rm = T))
+
 
 #Outputs-------------------------------------------------------------------------------------
+wb <- openxlsx::loadWorkbook("GBS Scenario Model Golden Copy.xlsx")
+
+#write MONTHLY CREATE RATE
+writeData(wb,
+          monthly.create.data,
+          sheet = "Monthly Create", 
+          startRow = 1, startCol = 1)
+
+#write ADJUSTED ABSOLUTE YIELD CURVES
+writeData(wb,
+          adjusted.abs,
+          sheet = "Adjusted Yield", 
+          startRow = 1, startCol = 1)
+
+#EXPORT GBS SCENARIO MODEL
+openxlsx::saveWorkbook(wb, paste0('GBS Scenario Model  - ', Sys.Date(), '.xlsx'), overwrite = T)
+
 #Closed Pipe at Opp Level
 write.csv(closed.pipe, "Closed Pipeline_11.18.16.csv")
 
 #Open Pipe at Opp Level (open pipe model)
-write.csv(open.pipe, "Open Pipeline_11.18.16.csv")
+write.csv(open.pipe, "Open Pipeline_11.24.16.csv")
 
 #Avg Monthly Create Rate
 write.csv(monthly.create.data, 'Monthy Create Rate Tab_11.18.16.csv')
@@ -2784,11 +2846,12 @@ write.csv(monthly.create.data, 'Monthy Create Rate Tab_11.18.16.csv')
 #save(abs.yields.F, rel.w.yields, rel.l.yields, file = "yield curves.saved")
 write.csv(abs.yields.F, 'Absolute Yield Curves 11.18.16.csv', na = "0")
 
+#######THIS STUFF HERE GOT CUT OUT - WE NEED TO FIGURE OUT WHAT TO DO W REL CURVES
 #Relative Won Yield Curves
-write.csv(rel.w.yields, 'Relative Yield Curves 11.18.16.csv', na = "0")
+#write.csv(rel.w.yields, 'Relative Yield Curves 11.18.16.csv', na = "0")
 
 #Relative Lost Yield Curves
-write.csv(rel.l.yields, 'Relative Lost Yield Curves 11.18.16.csv', na = "0")
+#write.csv(rel.l.yields, 'Relative Lost Yield Curves 11.18.16.csv', na = "0")
 
 #Cube
 write.csv(closed.cube.F, 'Close Date Cube_11.21.16.csv')
