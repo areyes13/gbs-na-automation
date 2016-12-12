@@ -15,7 +15,7 @@ adj.tbl <- closed.cube.F %>%
 
 #split 2015 - calculate yield
 tbl15 <- adj.tbl %>%
-  filter(year == 2015) %>%
+  filter(year == 2016) %>%
   group_by(Deal.Size) %>%
   summarize(yield15 = sum(Won)/sum(Won, Not.Won))
 
