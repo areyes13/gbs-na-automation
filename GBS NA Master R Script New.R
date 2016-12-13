@@ -290,9 +290,9 @@ opp.data$create.date <- as.Date(opp.data$created)
 #                       year = as.numeric(format(opp.data$create.date, format = "%Y")))
 
 
-#Combining AIC and AD&F
+#recoding service line
 opp.data$new.sl <- ifelse(opp.data$Level.17 == 'ADI US Federal' | opp.data$Level.17 == 'Application Innovation Consulting',
-                    'AIC', ifelse(opp.data$Level.17 == 'Business Proc Svcs', 'BPS',
+                    'AIC', ifelse(opp.data$Level.17 == 'Business Procs Svcs', 'BPS',
                               ifelse(opp.data$Level.17 == 'Digital', 'Digital',
                                  ifelse(opp.data$Level.17 == 'Enterprise Applications', 'EA', NA))))
 
@@ -409,19 +409,6 @@ open.pipe <- opp.data
 open.pipe <- subset(opp.data, Sector.F != "") #assumption
 #open.pipe <- subset(open.pipe, SSM.Step.Name != 'Won')
 open.pipe.slim <- open.pipe
-
-#excel pasting: open pipe
-wb <- openxlsx::loadWorkbook("Future Yield Model - template.xlsx")
-names(wb)
-
-#write OPEN PIPE DATA to wb
-writeData(wb,
-          open.pipe,
-          sheet = "Pipe.Data", startRow = 1, startCol = 1)
-
-# :D
-openxlsx::saveWorkbook(wb, paste0('Future Yield Model  - ', Sys.Date(), '.xlsx'), overwrite = T)
-
 
 #The Cube----------------------------------------------------------------------------------
 save(closed.pipe, open.pipe, file = 'open and closed.saved')
@@ -2771,6 +2758,7 @@ rel.l.dplist <- rbind(rel.l.dp1, rel.l.dp2, rel.l.dp3, rel.l.dp4, rel.l.dp5,
 rel.l.yields <-dcast(rel.l.dplist, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
 
 #Adjusting Absolute Curves-----------------------------------------------------------------------
+#re-structure closed.cube.F by removing Canada & Federal
 adj.tbl <- closed.cube.F %>%
   filter(date >= '2015-01-01',
          !Sector %in% c('Canada', 'US Federal'),
@@ -2778,26 +2766,30 @@ adj.tbl <- closed.cube.F %>%
   mutate(year = year(date),
          DPUID = toupper(DPUID))
 
-#split 2015 - calculate yield
+#calculate yield by deal size
 tbl15 <- adj.tbl %>%
   filter(year == 2016) %>%
   group_by(Deal.Size) %>%
   summarize(yield15 = sum(Won)/sum(Won, Not.Won))
 
-#split 2016 - calculate yield & then merge in 2015 to get adjustment factor
+#calculate yield by deal size and sector & then merge in tbl15 to get adjustment factor
 tbl16 <- adj.tbl %>%
   filter(year == 2016, Sector != '') %>%
   group_by(Deal.Size, Sector) %>%
   summarize(yield16 = sum(Won)/sum(Won, Not.Won)) %>%
   left_join(tbl15, by = 'Deal.Size') %>%
-  mutate(adj.f = yield16/yield15)
+  mutate(adj.f = yield16/yield15) %>%
+  ungroup()
 
 #placeholder object to map in DPUID details
 mapper <- unique(adj.tbl %>% select(DPUID, Size.Type, Create.Stage:Service.Line))
 
+
+#yo dis might be broke
 adjusted.abs <- abs.yields.F %>%
   gather(Month, "yield", `0`:`24`) %>%
-  mutate(DPUID.up = toupper(DPUID),
+  mutate(yield = as.numeric(yield), 
+         DPUID.up = toupper(DPUID),
          Month = as.numeric(Month)) %>%
   inner_join(mapper, by = c('DPUID.up'='DPUID')) %>%
   select(-DPUID.up) %>%
@@ -2805,61 +2797,180 @@ adjusted.abs <- abs.yields.F %>%
   mutate(adjusted.yield = adj.f * yield) %>%
   arrange(DPUID, Month)
 
-rm(tbl15, tbl16, adj.tbl, mapper)
+#rm(tbl15, tbl16, adj.tbl, mapper)
 
 
 # OPEN PIPELINE MODEL THING -----------------------------------------------
 tcv.rollup <- open.pipe %>%
   filter(deal.profile != 0, SSM.Step.Name != 'Won') %>%
   group_by(DPUID, Size.Type, deal.profile, age.month) %>%
-  summarise(tcv = sum(TCV, na.rm = T))
+  summarise(tcv = sum(TCV, na.rm = T)) %>%
+  ungroup() %>%
+  mutate(DPUID = toupper(DPUID))
+
+#code for dummy curvies
+rel.w.yields$status <- 'WON'
+rel.l.yields$status <- 'LOST'
+
+rel.curves <- rbind(rel.w.yields, rel.l.yields)
+
+#repeat curves 7 times
+seven <- rel.curves[rep(row.names(rel.curves), 7),]
+
+sectors <- c(sectors, 'US FEDERAL', 'CANADA')
+
+#bring in sectors to this table
+seven$sectors <- rep_len(sectors, length(seven[,1]))
+
+#melt the months
+seven <- seven %>%
+  gather(month, percent, `0`:`24`) %>%
+  mutate(percent = replace(percent, is.na(percent), 0))
+seven$month <- as.numeric(seven$month)
+
+#merge seven INTO dpuid.match
+rel.tbl <- dpuid.dp.match %>%
+  left_join(seven %>%
+              select(Deal.Profile, status, sectors, month, percent), 
+            by = c('AGDPID' = 'Deal.Profile', 
+                   'mo.bin' = 'month', 
+                   'Sector' = 'sectors')) %>%
+  spread(status, percent) %>%
+  mutate(decay = 1 - WON - LOST,
+         DPUID = toupper(DPUID))
+
+#need to set up a table to map actual dates into the 'months' field in the cascade tbl
+month.vec <- seq.Date(from = floor_date(Sys.Date(), 'month'),
+                      to = floor_date(Sys.Date(), 'month') + months(24),
+                      by = 'month')
+
+date.map <- data.frame(month = 0:24,
+                       date = month.vec)
+
+dealsize.df <- data.frame(Deal.Size = c('<$1M', '$1M to <$5M', '$5M to <$10M', '>$10M'), dummy = "a")
+rem.sectors <- data.frame(Sector = c('CANADA', 'US FEDERAL'), dummy = "a")
+
+map16 <- full_join(dealsize.df, rem.sectors) %>%
+  select(-dummy) %>%
+  mutate(yield16 = 1, yield15 = 1, adj.f = 1)
 
 
-#Outputs-------------------------------------------------------------------------------------
-wb <- openxlsx::loadWorkbook("GBS Scenario Model Golden Copy.xlsx")
+new.tbl16 <- rbind(tbl16, map16)
+
+
+#now map those decays into the tcv rollup
+cascade <- tcv.rollup %>%
+  left_join(rel.tbl %>%
+              select(DPUID, mo.bin, Deal.Size, Sector, WON, decay),
+            by = 'DPUID') %>%
+  left_join(new.tbl16 %>% select(-starts_with('yield')), 
+            by = c('Deal.Size', 'Sector')) %>%
+  group_by(DPUID, age.month) %>% 
+  filter(mo.bin >= age.month) %>%
+  mutate(rolling = cumprod(decay),
+         open.tcv = lag(tcv * rolling, 1),
+         open.tcv = ifelse(is.na(open.tcv), tcv, open.tcv),
+         won.tcv = open.tcv * (WON*adj.f),
+         month = seq(n())-1) %>%
+  ungroup() %>%
+  left_join(date.map, by = 'month') %>%
+  select(-rolling, -decay, -mo.bin) %>%
+  mutate(quarter = lubridate::quarter(date, with_year = T))
+
+#do something dumb to figure out which are the next 4 quarters
+quarts <- cascade %>%
+  group_by(quarter) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  top_n(4, desc(quarter))
+
+
+#set up a bunch of summary things
+final.open.all <- cascade %>%
+  filter(quarter %in% quarts$quarter) %>%
+  group_by(Sector, quarter) %>%
+  summarise(tcv = sum(won.tcv)/1e6) %>%
+  ungroup() %>%
+  spread(quarter, tcv)%>%
+  mutate(Size.Type = 'All')
+
+final.open.small <- cascade %>%
+  filter(quarter %in% quarts$quarter, Size.Type == 'Small') %>%
+  group_by(Sector, Size.Type, quarter) %>%
+  summarise(tcv = sum(won.tcv)/1e6) %>%
+  ungroup() %>%
+  spread(quarter, tcv)
+
+final.open <- rbind(final.open.all, final.open.small)
+final.open <- final.open %>%
+  gather(quarter, tcv, -Sector, -Size.Type) %>%
+  group_by(Size.Type, quarter) %>%
+  summarise(tcv = sum(tcv)) %>%
+  ungroup() %>%
+  spread(quarter, tcv) %>%
+  mutate(Sector = 'North America')
+
+final.open <- rbind(final.open.small, final.open.all, final.open)
+
+
+
+#Pasting-------------------------------------------------------------------------------------
+setwd("~/gbs-na-automation/Model Template")
+#wb <- openxlsx::loadWorkbook("GBS Scenario Model - Template.xlsm")
+#library(readxl)
+#wb <- readxl::read_excel("GBS Scenario Model - Template.xlsm")
 
 #write MONTHLY CREATE RATE
-writeData(wb,
-          monthly.create.data,
-          sheet = "Monthly Create", 
-          startRow = 1, startCol = 1)
+#writeData(wb,
+#          monthly.create.data,
+#          sheet = "Monthly Create", 
+#          startRow = 1, startCol = 1)
 
 #write ADJUSTED ABSOLUTE YIELD CURVES
-writeData(wb,
-          adjusted.abs,
-          sheet = "Adjusted Yield", 
-          startRow = 1, startCol = 1)
+#writeData(wb,
+#          adjusted.abs,
+#          sheet = "Adjusted Yield", 
+#          startRow = 1, startCol = 1)
 
 #EXPORT GBS SCENARIO MODEL
-openxlsx::saveWorkbook(wb, paste0('GBS Scenario Model  - ', Sys.Date(), '.xlsx'), overwrite = T)
+#setwd("~/gbs-na-automation/Output Data")
+#openxlsx::saveWorkbook(wb, file =  paste0('GBS Scenario Model - ', Sys.Date(), '.xlsx'), overwrite = T)
 
 #Closed Pipe at Opp Level
-write.csv(closed.pipe, "Closed Pipeline_11.18.16.csv")
+#write.csv(closed.pipe, "Closed Pipeline_11.18.16.csv")
 
 #Open Pipe at Opp Level (open pipe model)
-write.csv(open.pipe, "Open Pipeline_11.24.16.csv")
+#write.csv(open.pipe, "Open Pipeline_12.9.16.csv")
 
 #Avg Monthly Create Rate
-write.csv(monthly.create.data, 'Monthy Create Rate Tab_11.18.16.csv')
+write.csv(monthly.create.data, file = 'mcr.csv', row.names = F)
 
 #Absolute Yield Curves
 #save(abs.yields.F, rel.w.yields, rel.l.yields, file = "yield curves.saved")
-write.csv(abs.yields.F, 'Absolute Yield Curves 11.18.16.csv', na = "0")
+write.csv(adjusted.abs, 'aay.csv', na = "0", row.names = F)
+
+#final OPEN PIPE OUTPUT
+write.csv(final.open, 'op.csv', row.names = F)
+
+
+# run vbscript to move outputs to GBS Scenario Model
+shell.exec("C:/Users/SCIP2/Documents/gbs-na-automation/Scripts/pipe.vbs") 
+
 
 #######THIS STUFF HERE GOT CUT OUT - WE NEED TO FIGURE OUT WHAT TO DO W REL CURVES
 #Relative Won Yield Curves
-#write.csv(rel.w.yields, 'Relative Yield Curves 11.18.16.csv', na = "0")
+#write.csv(rel.w.yields, 'Relative Yield Curves 12.9.16.csv', na = "0")
 
 #Relative Lost Yield Curves
-#write.csv(rel.l.yields, 'Relative Lost Yield Curves 11.18.16.csv', na = "0")
+#write.csv(rel.l.yields, 'Relative Lost Yield Curves 12.9.16.csv', na = "0")
 
 #Cube
-write.csv(closed.cube.F, 'Close Date Cube_11.21.16.csv')
-write.csv(created.cube.F, 'Create Date Cube_11.21.16.csv')
+#write.csv(closed.cube.F, 'Close Date Cube_11.21.16.csv')
+#write.csv(created.cube.F, 'Create Date Cube_11.21.16.csv')
 
 #Save Objects
 #save(closed.pipe, file = "closedpipe.saved")
 #save(open.pipe, monthly.create.data, abs.yields, rel.w.yields, rel.l.yields, 
  #    file = "na gbs objects.saved")
 
-save(closed.cube.F, created.cube.F, file = "cubes.saved")
+#save(closed.cube.F, created.cube.F, file = "cubes.saved")
