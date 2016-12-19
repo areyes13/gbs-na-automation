@@ -16,8 +16,15 @@ directory <- paste0(getwd(), "/Input Data - Open")
 filename <- list.files(directory)
 
 library(readxl)
-dtl.open <- read_excel(paste(directory, filename, sep = '/'), 
-                       skip = 2)
+dtl.open <- read_excel(paste(directory, filename, sep = '/')) 
+                       #skip = 2)
+
+start.row <- which(dtl.open[,1] == 'Opp No')
+print(start.row)
+
+colnames(dtl.open) <- dtl.open[start.row,]
+dtl.open <- dtl.open[start.row+1:length(dtl.open$`Opp No`),]
+dtl.open <- dtl.open[rowSums(is.na(dtl.open)) != ncol(dtl.open),]
 
 #Field Name Cleanup
 colnames(dtl.open) <- str_replace_all(colnames(dtl.open), "[^[:alnum:]]", ".")
@@ -408,7 +415,6 @@ open.pipe <- opp.data
 
 open.pipe <- subset(opp.data, Sector.F != "") #assumption
 #open.pipe <- subset(open.pipe, SSM.Step.Name != 'Won')
-open.pipe.slim <- open.pipe
 
 #The Cube----------------------------------------------------------------------------------
 save(closed.pipe, open.pipe, file = 'open and closed.saved')
@@ -2761,10 +2767,11 @@ rel.l.yields <-dcast(rel.l.dplist, Deal.Profile + IMT + Service.Line + Deal.Size
 #re-structure closed.cube.F by removing Canada & Federal
 adj.tbl <- closed.cube.F %>%
   filter(date >= '2015-01-01',
-         !Sector %in% c('Canada', 'US Federal'),
+         #!Sector %in% c('Canada', 'US Federal'),
          !is.na(Sector)) %>%
   mutate(year = year(date),
-         DPUID = toupper(DPUID))
+         DPUID = toupper(DPUID),
+         Sector = toupper(Sector))
 
 #calculate yield by deal size
 tbl15 <- adj.tbl %>%
@@ -2778,7 +2785,8 @@ tbl16 <- adj.tbl %>%
   group_by(Deal.Size, Sector) %>%
   summarize(yield16 = sum(Won)/sum(Won, Not.Won)) %>%
   left_join(tbl15, by = 'Deal.Size') %>%
-  mutate(adj.f = yield16/yield15) %>%
+  mutate(adj.f = yield16/yield15,
+         adj.f = ifelse(Sector %in% c('CANADA', 'US FEDERAL'), 1, adj.f)) %>%
   ungroup()
 
 #placeholder object to map in DPUID details
@@ -2891,23 +2899,19 @@ final.open.all <- cascade %>%
   group_by(Sector, quarter) %>%
   summarise(tcv = sum(won.tcv)/1e6) %>%
   ungroup() %>%
-  spread(quarter, tcv)%>%
   mutate(Size.Type = 'All')
 
 final.open.small <- cascade %>%
   filter(quarter %in% quarts$quarter, Size.Type == 'Small') %>%
   group_by(Sector, Size.Type, quarter) %>%
   summarise(tcv = sum(won.tcv)/1e6) %>%
-  ungroup() %>%
-  spread(quarter, tcv)
+  ungroup()
 
 final.open <- rbind(final.open.all, final.open.small)
 final.open <- final.open %>%
-  gather(quarter, tcv, -Sector, -Size.Type) %>%
   group_by(Size.Type, quarter) %>%
   summarise(tcv = sum(tcv)) %>%
   ungroup() %>%
-  spread(quarter, tcv) %>%
   mutate(Sector = 'North America')
 
 final.open <- rbind(final.open.small, final.open.all, final.open)
