@@ -2336,6 +2336,7 @@ write.csv(rel.w.yields, 'unsmoothed rel yields.csv', row.names = F)
 
 rel.w.yields <- read.csv("~/gbs-na-automation/Smoothed Curves/smoothed rel yields.csv")
 setwd("~/gbs-na-automation")
+colnames(rel.w.yields) <- gsub(x = colnames(rel.w.yields), 'X', '')
 
 #Relative Lost Yield Curves---------------------------------------------------------------------
 #Deal Profile 1: Identified x All IMT x <$1M x AIC-------------------------------------
