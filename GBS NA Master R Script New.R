@@ -1,5 +1,5 @@
 #Working Directory - SCIP Server
-setwd("~/gbs-na-automation")
+setwd("C:/Users/SCIP2/Box Sync/NA GBS Pipeline Final Deliverables/Back-end Input Data")
 options(java.parameters = "-Xmx1024m")
 Sys.setenv("R_ZIPCMD" = "C:/Rtools/bin/zip.exe")
 
@@ -8,23 +8,28 @@ library(stringr)
 library(openxlsx)
 
 # EXCEL MODEL -------------------------------------------------------------
-#load EXCEL INPUT DATA workbook
+#set up 12 month interval for filtering
+date.filter <- interval(start = floor_date(Sys.Date(), 'month')- months(12), 
+                        end = floor_date(Sys.Date(), 'month'))
 
-directory <- paste0(getwd(), "/Input Data - Open")
-#stop for only open pipe
+#Open pipeline for monthly create-----------------------------------------
+#load EXCEL INPUT DATA workbook
+directory <- paste0(getwd(), "/Input Data - Open - Mcr")
 
 filename <- list.files(directory)
 
 library(readxl)
-dtl.open <- read_excel(paste(directory, filename, sep = '/')) 
-                       #skip = 2)
+dtl.open <- read_excel(paste(directory, filename, sep = '/'))
 
 start.row <- which(dtl.open[,1] == 'Opp No')
 print(start.row)
 
-colnames(dtl.open) <- dtl.open[start.row,]
-dtl.open <- dtl.open[start.row+1:length(dtl.open$`Opp No`),]
-dtl.open <- dtl.open[rowSums(is.na(dtl.open)) != ncol(dtl.open),]
+#colnames(dtl.open) <- dtl.open[start.row,]
+#dtl.open <- dtl.open[start.row+1:length(dtl.open$`Opp No`),]
+#dtl.open <- dtl.open[rowSums(is.na(dtl.open)) != ncol(dtl.open),]
+
+dtl.open <- read_excel(paste(directory, filename, sep = '/'),
+                       skip = start.row)
 
 #Field Name Cleanup
 colnames(dtl.open) <- str_replace_all(colnames(dtl.open), "[^[:alnum:]]", ".")
@@ -33,12 +38,39 @@ colnames(dtl.open) <- str_replace_all(colnames(dtl.open), "[^[:alnum:]]", ".")
 dtl.open$S.S.Update.Date <- ymd(dtl.open$S.S.Update.Date)
 dtl.open$Opp.Create.Date <- ymd(dtl.open$Opp.Create.Date)
 
+
+#Open pipeline for projected yield--------------------------------------------------
+#load EXCEL INPUT DATA workbook
+directory <- paste0(getwd(), "/Input Data - Open - Yield")
+
+filename <- list.files(directory)
+
+library(readxl)
+dtl.open.2 <- read_excel(paste(directory, filename, sep = '/')) 
+
+start.row.2 <- which(dtl.open.2[,1] == 'Opp No')
+print(start.row.2)
+
+#colnames(dtl.open) <- dtl.open[start.row,]
+#dtl.open <- dtl.open[start.row+1:length(dtl.open$`Opp No`),]
+#dtl.open <- dtl.open[rowSums(is.na(dtl.open)) != ncol(dtl.open),]
+
+dtl.open.2 <- read_excel(paste(directory, filename, sep = '/'),
+                       skip = start.row.2)
+
+#Field Name Cleanup
+colnames(dtl.open.2) <- str_replace_all(colnames(dtl.open.2), "[^[:alnum:]]", ".")
+
+#CLEAN UP DATES 
+dtl.open.2$S.S.Update.Date <- ymd(dtl.open.2$S.S.Update.Date)
+dtl.open.2$Opp.Create.Date <- ymd(dtl.open.2$Opp.Create.Date)
+
 #Working Directory - Adam's Computer
 #setwd("~/NA GBS Strategic Work/R Content/Outputs")
-
-setwd("~/gbs-na-automation/Output Data")
+rm(directory, filename)
+#setwd("~/gbs-na-automation/Output Data")
 #save object
-save(dtl.open, file = "clean open pipe.saved")
+#save(dtl.open, file = "clean open pipe.saved")
 
 #Packages to install
 #install.packages("data.table")
@@ -60,7 +92,13 @@ library(readxl)
 # OPP LEVEL ROLLUP (2015-2016)
 #Read in file from shared
 #dtl.closed <- fread("~/NA GBS Strategic Work/Data Sources/Closed Pipeline/EIW GBS NA 2012to2016Q3- First Stage.csv")
-dtl.closed <- read_excel("~/gbs-na-automation/Input Data - Closed/EIW GBS NA 2012to2016Q3- First Stage.xlsx", na = "empty")
+
+directory <- paste0(getwd(), "/Input Data - Closed")
+
+filename <- list.files(directory)
+
+dtl.closed <- read_excel(paste(directory, filename, sep = '/'), 
+                         na = "empty")
 years <- as.data.frame(dtl.closed)
 
 new <- gsub("\\s", ".", colnames(years))
@@ -143,7 +181,7 @@ data$create.year <- as.numeric(data$create.year)
 library(splitstackshape)
 
 data$freq <- with(data,
-                  ifelse(Sector == 'US Commercial' & create.year < 2016, 5, 1)) #check
+                  ifelse(Sector == 'US Commercial' & create.year < 2016, 5, 1)) #DATE
 
 data.expanded <- data[rep(row.names(data), data$freq), 1:17]
 sectors = c("US COMM", "US DIST", "US FSS", "US IND", "US PUB")
@@ -153,11 +191,11 @@ sector.data.2 <- subset(data.expanded, data.expanded$freq == 1)
 
 sector.data.1$Sector.Man <- rep_len(sectors, length(sector.data.1[,1]))
 #New TCV based on sector distribution above
-sector.data.1$new.tcv <- with(sector.data.1, ifelse(Sector.Man == 'US COMM', sl.tcv*(285/1461),
-                                               ifelse(Sector.Man == 'US DIST', sl.tcv*(353/1461),
-                                                ifelse(Sector.Man == 'US FSS', sl.tcv*(282/1461),
-                                                 ifelse(Sector.Man == 'US IND', sl.tcv*(395/1461),
-                                                  ifelse(Sector.Man == 'US PUB', sl.tcv*(146/1461),
+sector.data.1$new.tcv <- with(sector.data.1, ifelse(Sector.Man == 'US COMM', sl.tcv*(313/1497),
+                                               ifelse(Sector.Man == 'US DIST', sl.tcv*(367/1497),
+                                                ifelse(Sector.Man == 'US FSS', sl.tcv*(309/1497),
+                                                 ifelse(Sector.Man == 'US IND', sl.tcv*(361/1497),
+                                                  ifelse(Sector.Man == 'US PUB', sl.tcv*(147/1497),
                                                     sl.tcv)))))) #assumption
 sector.data.2$Sector.Man <- with(sector.data.2,
                               ifelse(Sector == 'US Commercial' & Gbs.Sector.Name == 'Communications', 'US COMM',
@@ -207,7 +245,7 @@ closed.pipe$source <- with(closed.pipe,
 
 #write.csv(won.create, "tcv created by stage.csv")
 
-# Open Pipe------------------------------------------------------------------------------------
+# Open Pipe for Monthly Create Rate------------------------------------------------------------------------------------
 library(data.table)
 library(scales)
 library(reshape2)
@@ -221,7 +259,7 @@ library(XLConnect)
 #dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 3Q16 29.09.16.csv") #Edit
 #dtl.open <- read.csv("~/gbs-na-automation/Input Data - Open/SMS8021 GBS NA Opportunity Detail - 4Q16 17.11.16.csv")
 years.pipe <- as.data.frame(dtl.open)
-setwd("~/gbs-na-automation/Output Data")
+#setwd("~/gbs-na-automation/Output Data")
 
 detach("package:splitstackshape", unload=TRUE)
 detach("package:data.table", unload=TRUE)
@@ -238,10 +276,10 @@ years.pipe <- subset(years.pipe, IMT != 'US Exception Mkt') #assumption
 
 library(dplyr)
 
-#use dplyr to rollup data to Opportunity level. Remove opps with tcv of 0 after rolling up
+#use dplyr to rollup data to Opportunity level. Remove opps with tcv of 0 after rolling up, FIX FOR NEW REPORTS
 data.pipe <- dplyr::tbl_df(years.pipe) %>% #specify the data table to summarize
   group_by(Opp.No, Brand.Sub.Group, SSM.Step.Name, Previous.Sales.Stage,
-           IMT, Level.17,  
+           IMT, #Level.17,  
            #Industry, 
            GBS.Bus.Unit.Level.2) %>% #specify which records/variables to keep
   summarise(tcv = sum(tcv), #define new variables using functions
@@ -298,10 +336,12 @@ opp.data$create.date <- as.Date(opp.data$created)
 
 
 #recoding service line
-opp.data$new.sl <- ifelse(opp.data$Level.17 == 'ADI US Federal' | opp.data$Level.17 == 'Application Innovation Consulting',
-                    'AIC', ifelse(opp.data$Level.17 == 'Business Procs Svcs', 'BPS',
-                              ifelse(opp.data$Level.17 == 'Digital', 'Digital',
-                                 ifelse(opp.data$Level.17 == 'Enterprise Applications', 'EA', NA))))
+opp.data$new.sl <- ifelse(opp.data$Brand.Sub.Group == 'AD&F', 'AIC', opp.data$Brand.Sub.Group) #FIX FOR NEW REPORTS
+
+#opp.data$new.sl <- ifelse(opp.data$Level.17 == 'ADI US Federal' | opp.data$Level.17 == 'Application Innovation Consulting',
+ #                   'AIC', ifelse(opp.data$Level.17 == 'Business Procs Svcs', 'BPS',
+  #                            ifelse(opp.data$Level.17 == 'Digital', 'Digital',
+   #                              ifelse(opp.data$Level.17 == 'Enterprise Applications', 'EA', NA))))
 
 
 #Collapsing IMTs
@@ -413,11 +453,224 @@ opp.data["source"] <- "Open"
 
 open.pipe <- opp.data
 
-open.pipe <- subset(opp.data, Sector.F != "") #assumption
+open.pipe <- subset(open.pipe, Sector.F != "") #assumption
 #open.pipe <- subset(open.pipe, SSM.Step.Name != 'Won')
 
+
+# Open Pipe for Projected TCV Yield------------------------------------------------------------------------------------
+library(data.table)
+library(scales)
+library(reshape2)
+library(stringi)
+library(lubridate)
+library(XLConnect)
+# OPP LEVEL ROLLUP
+
+#Adam's fread()
+#dtl.open <- read.csv("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map/SMS8021 GBS NA Opportunity Detail - 3Q16 29.09.16.csv") #Edit
+#dtl.open <- read.csv("~/gbs-na-automation/Input Data - Open/SMS8021 GBS NA Opportunity Detail - 4Q16 17.11.16.csv")
+years.pipe.2 <- as.data.frame(dtl.open.2)
+#setwd("~/gbs-na-automation/Output Data")
+
+detach("package:splitstackshape", unload=TRUE)
+detach("package:data.table", unload=TRUE)
+
+
+#years.pipe.2$Opp.Create.Date <- with(years.pipe.2, mdy(Opp.Create.Date))
+#years.pipe.2$S.S.Update.Date <- with(years.pipe.2, mdy(S.S.Update.Date))
+years.pipe.2$create.year <- format(years.pipe.2$Opp.Create.Date, "%Y")
+years.pipe.2$create.month <- format(years.pipe.2$Opp.Create.Date, "%m")
+years.pipe.2$tcv <- as.numeric(years.pipe.2$Rev.Signings.Value...K.)
+years.pipe.2$tcv <- years.pipe.2$tcv * 1000
+years.pipe.2 <- subset(years.pipe.2, IMT != 'US Exception Mkt') #assumption
+
+
+library(dplyr)
+
+#use dplyr to rollup data to Opportunity level. Remove opps with tcv of 0 after rolling up
+data.pipe.2 <- dplyr::tbl_df(years.pipe.2) %>% #specify the data table to summarize
+  group_by(Opp.No, Brand.Sub.Group, SSM.Step.Name, Previous.Sales.Stage,
+           IMT, Level.17,  
+           #Industry, 
+           GBS.Bus.Unit.Level.2) %>% #specify which records/variables to keep
+  summarise(tcv = sum(tcv), #define new variables using functions
+            created = min(Opp.Create.Date),
+            #updated = max(S.S.Update.Date)
+            s.s.updated = max(S.S.Update.Date)) %>%
+  filter(tcv > 0) #remove 0 or neg tcvs
+
+#create size categories based on total opp val
+data.pipe.2$deal.size <- with(data.pipe.2,
+                            factor(ifelse(tcv < 1000000, '<$1M',
+                                          ifelse(tcv >= 1000000 & tcv <5000000, '$1M to <$5M',
+                                                 ifelse(tcv >= 5000000 & tcv < 10000000, '$5M to <$10M',
+                                                        ifelse(tcv >= 10000000, '>$10M', NA))))))
+#reorder factor levels (originally defaults to alphabetical)
+data.pipe.2$size <- factor(data.pipe.2$deal.size, levels(data.pipe.2$deal.size)[c(1,4,2,3)])
+
+data.pipe.2 <- as.data.frame(data.pipe.2)
+
+#fix formatting for date fields
+data.pipe.2$create.month <- lubridate::month(data.pipe.2$created)
+data.pipe.2$create.year <- lubridate::year(data.pipe.2$created)
+
+
+#data.pipe.2$Industry <- as.character(data.pipe.2$Industry)
+
+#data.pipe.2$Industry <- with(data.pipe.2, ifelse(Industry == 'Government, Central/Federal',
+#                                            'Government',
+#                                      ifelse(Industry == 'Government, State/Provincial/Local',
+#                                            'Government', Industry)))
+
+
+data.pipe.2$create.m.yr <- floor_date(data.pipe.2$created, 'month')
+
+# CYCLE TIME CALCULATIONS
+#figure out how many weeks it took to go from created to closed
+data.pipe.2$age.weeks <- difftime(Sys.Date(), data.pipe.2$created, units = c("weeks"))
+data.pipe.2$age.weeks <- round(as.numeric(data.pipe.2$age.weeks), 0)
+
+#set month bin based on 4 week intervals
+data.pipe.2$age.month <- with(data.pipe.2, findInterval(age.weeks, seq(0,104000, by = 4.33))) - 1
+
+
+opp.data.2 <- data.pipe.2
+
+
+#Flag deals that are duplicates across service lines
+opp.data.2["dupe"] <- duplicated(opp.data.2$Opp.No)
+
+#splitting up dates
+opp.data.2$create.date <- as.Date(opp.data.2$created)
+#opp.data.2$create.date <- data.frame(date = opp.data.2$create.date,
+#                       year = as.numeric(format(opp.data.2$create.date, format = "%Y")))
+
+
+#recoding service line
+#opp.data.2$new.sl <- ifelse(opp.data.2$Brand.Sub.Group == 'AD&F', 'AIC', opp.data.2$Brand.Sub.Group)
+
+opp.data.2$new.sl <- ifelse(opp.data.2$Level.17 == 'ADI US Federal' | opp.data.2$Level.17 == 'Application Innovation Consulting',
+                   'AIC', ifelse(opp.data.2$Level.17 == 'Business Procs Svcs', 'BPS',
+                            ifelse(opp.data.2$Level.17 == 'Digital', 'Digital',
+                              ifelse(opp.data.2$Level.17 == 'Enterprise Applications', 'EA', NA))))
+
+
+#Collapsing IMTs
+opp.data.2$IMT.roll.up <- ifelse(opp.data.2$IMT == 'US Communica/CSI Mkt' |
+                                 opp.data.2$IMT == 'US Distribution Mkt' |
+                                 opp.data.2$IMT == 'US Finan Service Mkt' |
+                                 opp.data.2$IMT == 'US Industrial Mkt' |
+                                 opp.data.2$IMT == 'US Public Mkt', 'US',
+                               ifelse(opp.data.2$IMT == 'Canada Mkt', 'Canada',
+                                      ifelse(opp.data.2$IMT == 'US Federal Mkt', 'US Federal', NA)))
+
+
+#Creating Create.Stage
+opp.data.2$Create.Stage <- with(opp.data.2,
+                              ifelse(Previous.Sales.Stage == '*',
+                                     as.character(SSM.Step.Name),
+                                     ifelse(Previous.Sales.Stage == 1 | Previous.Sales.Stage == 2 |
+                                              Previous.Sales.Stage == 3, 'Identified',
+                                            ifelse(SSM.Step.Name == 'Identified' &
+                                                     Previous.Sales.Stage != '*', 'Identified',
+                                                   ifelse(SSM.Step.Name == 'Validated' &
+                                                            Previous.Sales.Stage != '*', 'Identified',
+                                                          ifelse(SSM.Step.Name == 'Qualified' &
+                                                                   Previous.Sales.Stage != '*', 'Identified',
+                                                                 ifelse(SSM.Step.Name == 'Conditional Agreement' &
+                                                                          Previous.Sales.Stage != '*' & Previous.Sales.Stage != 1 &
+                                                                          Previous.Sales.Stage != 2 & Previous.Sales.Stage != 3,
+                                                                        'Validated', ""))))))) #assumption
+
+
+opp.data.2$Create.Stage <- with(opp.data.2, ifelse(Create.Stage == 'Conditional Agreement',
+                                               'Conditional', Create.Stage))
+#Field Rename
+opp.data.2$IMT <- opp.data.2$IMT.roll.up
+opp.data.2$Service.Line <- opp.data.2$new.sl
+opp.data.2$Sector.IMT <- opp.data.2$GBS.Bus.Unit.Level.2
+opp.data.2$Sector.IMT <- with(opp.data.2,
+                            ifelse(Sector.IMT == 'US-FSS', 'US FSS',
+                                   ifelse(Sector.IMT == 'US-DIST', 'US DIST',
+                                          ifelse(Sector.IMT == 'US-COMM', 'US COMM',
+                                                 ifelse(Sector.IMT == 'US-IND', 'US IND',
+                                                        ifelse(Sector.IMT == 'US-PUB', 'US PUB',
+                                                               ifelse(Sector.IMT == 'Canada', 'Canada',
+                                                                      ifelse(Sector.IMT == 'US Federal', 'US Federal', ""))))))))
+
+#Smushing
+opp.data.2$size.smush <- ifelse(opp.data.2$deal.size == '$1M to <$5M' | opp.data.2$deal.size == '$5M to <$10M',
+                              '$1M to <$10M', ifelse(opp.data.2$deal.size == '<$1M', '<$1M', '>$10M'))
+opp.data.2$size.smush.2 <- ifelse(opp.data.2$deal.size == '<$1M', '<$1M', '>$1M')
+
+opp.data.2$sl.smush <- ifelse(opp.data.2$Service.Line == 'AIC' |
+                              opp.data.2$Service.Line == 'BPS', 'AIC & BPS', 'Digital & EA')
+
+opp.data.2$sl.smush.2 <- ifelse(opp.data.2$Service.Line == 'AIC', 'AIC', 'Digital, EA, & BPS')
+
+opp.data.2$IMT.smush <- ifelse(opp.data.2$IMT == 'US' | opp.data.2$IMT == 'US Federal',
+                             'US & US Federal', 'Canada')
+
+#Deal Profile Assignment
+opp.data.2$deal.profile <- with(opp.data.2,
+                              ifelse(Service.Line == "AIC" & size.smush == "<$1M" & Create.Stage == "Identified", 1,
+                                     ifelse(Service.Line == "Digital" & size.smush == "<$1M" & Create.Stage == "Identified", 2,
+                                            ifelse(Service.Line == "EA" & size.smush == "<$1M" & Create.Stage == "Identified", 3,
+                                                   ifelse(Service.Line == "BPS" & size.smush == "<$1M" & Create.Stage == "Identified", 4,
+                                                          ifelse(Service.Line == "AIC" & size.smush == "$1M to <$10M" & Create.Stage == "Identified", 5,
+                                                                 ifelse(Service.Line == "Digital" & size.smush == "$1M to <$10M" & Create.Stage == "Identified", 6,
+                                                                        ifelse(Service.Line == "EA" & size.smush == "$1M to <$10M" & Create.Stage == "Identified", 7,
+                                                                               ifelse(Service.Line == "BPS" & size.smush == "$1M to <$10M" & Create.Stage == "Identified", 9,
+                                                                                      ifelse(sl.smush == "AIC & BPS" & size.smush == ">$10M" & Create.Stage == "Identified", 10,
+                                                                                             ifelse(Service.Line == "Digital" & size.smush == ">$10M" & Create.Stage == "Identified", 13,
+                                                                                                    ifelse(Service.Line == "EA" & size.smush == ">$10M" & Create.Stage == "Identified", 14,
+                                                                                                           ifelse(sl.smush == "AIC & BPS" & size.smush == "<$1M" & Create.Stage == "Validated", 16,
+                                                                                                                  ifelse(Service.Line == "Digital" & size.smush == "<$1M" & Create.Stage == "Validated", 19,
+                                                                                                                         ifelse(Service.Line == "EA" & size.smush == "<$1M" & Create.Stage == "Validated", 22,
+                                                                                                                                ifelse(sl.smush == "AIC & BPS" & size.smush == "$1M to <$10M" & Create.Stage == "Validated", 24,
+                                                                                                                                       ifelse(Service.Line == "Digital" & size.smush == "$1M to <$10M" & Create.Stage == "Validated", 27,
+                                                                                                                                              ifelse(Service.Line == "EA" & size.smush == "$1M to <$10M" & Create.Stage == "Validated", 30,
+                                                                                                                                                     ifelse(sl.smush == "AIC & BPS" & size.smush == ">$10M" & Create.Stage == "Validated", 32,
+                                                                                                                                                            ifelse(Service.Line == "Digital" & size.smush == ">$10M" & Create.Stage == "Validated", 33,
+                                                                                                                                                                   ifelse(Service.Line == "EA" & size.smush == ">$10M" & Create.Stage == "Validated", 34,
+                                                                                                                                                                          ifelse(sl.smush == "AIC & BPS" & size.smush == "<$1M" & Create.Stage == "Qualified", 36,
+                                                                                                                                                                                 ifelse(Service.Line == "Digital" & size.smush == "<$1M" & Create.Stage == "Qualified", 39,
+                                                                                                                                                                                        ifelse(Service.Line == "EA" & size.smush == "<$1M" & Create.Stage == "Qualified", 42,
+                                                                                                                                                                                               ifelse(sl.smush == "AIC & BPS" & size.smush.2 == ">$1M" & Create.Stage == "Qualified", 44,
+                                                                                                                                                                                                      ifelse(sl.smush == "Digital & EA" & size.smush.2 == ">$1M" & Create.Stage == "Qualified", 45,
+                                                                                                                                                                                                             ifelse(Service.Line == "AIC" & size.smush == "<$1M" & Create.Stage == "", 1,
+                                                                                                                                                                                                                    ifelse(Service.Line == "Digital" & size.smush == "<$1M" & Create.Stage == "", 2,
+                                                                                                                                                                                                                           ifelse(Service.Line == "EA" & size.smush == "<$1M" & Create.Stage == "", 3,
+                                                                                                                                                                                                                                  ifelse(Service.Line == "BPS" & size.smush == "<$1M" & Create.Stage == "", 4,
+                                                                                                                                                                                                                                         ifelse(Service.Line == "AIC" & size.smush == "$1M to <$10M" & Create.Stage == "", 5,
+                                                                                                                                                                                                                                                ifelse(Service.Line == "Digital" & size.smush == "$1M to <$10M" & Create.Stage == "", 6,
+                                                                                                                                                                                                                                                       ifelse(Service.Line == "EA" & size.smush == "$1M to <$10M" & Create.Stage == "", 7,
+                                                                                                                                                                                                                                                              ifelse(Service.Line == "BPS" & size.smush == "$1M to <$10M" & Create.Stage == "", 9,
+                                                                                                                                                                                                                                                                     ifelse(sl.smush == "AIC & BPS" & size.smush == ">$10M" & Create.Stage == "", 10,
+                                                                                                                                                                                                                                                                            ifelse(Service.Line == "Digital" & size.smush == ">$10M" & Create.Stage == "", 13,
+                                                                                                                                                                                                                                                                                   ifelse(Service.Line == "EA" & size.smush == ">$10M" & Create.Stage == "", 14, 0)))))))))))))))))))))))))))))))))))))
+
+opp.data.2$DPUID <- with(opp.data.2, paste(Create.Stage, size, Service.Line, Sector.IMT, 
+                                       #Industry,
+                                       sep = ""))
+
+opp.data.2$Size.Type <- with(opp.data.2, ifelse(size == '>$10M', 'Large', 'Small'))
+
+
+opp.data.2$Deal.Size <- opp.data.2$size
+opp.data.2$Sector.F <- opp.data.2$Sector.IMT
+opp.data.2$TCV <- opp.data.2$tcv
+opp.data.2["source"] <- "Open"
+
+open.pipe.2 <- opp.data.2
+
+open.pipe.2 <- subset(open.pipe.2, Sector.F != "") #assumption
+#open.pipe <- subset(open.pipe, SSM.Step.Name != 'Won')
+
+
+
 #The Cube----------------------------------------------------------------------------------
-save(closed.pipe, open.pipe, file = 'open and closed.saved')
+#save(closed.pipe, open.pipe, file = 'open and closed.saved')
 #load("~/NA GBS Strategic Work/R Content/Outputs/open and closed.saved")
 
 open.pipe$TID <- with(open.pipe, paste(Opp.No, Service.Line, sep = "-"))
@@ -561,7 +814,9 @@ rm(created.crud, closed.crud)
 #dpuid.map <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.sector.match.csv")
 
 #Server read in
-dpuid.map <- read.csv("~/gbs-na-automation/Mapping Tables/dpuid.sector.match.csv")
+directory <- paste0(getwd(), "/Mapping Tables")
+
+dpuid.map <- read.csv(paste0(directory, "/dpuid.sector.match.csv"))
 
 dpuid.map$DPUID <- tolower(dpuid.map$DPUID)
 created.wide$DPUID <- tolower(created.wide$DPUID)
@@ -595,7 +850,7 @@ closed.cube.F <- closed.wide
 #write.csv(closed.cube.Y, "yield calc.csv")
 
 #Creating monthly average create rate table--------------------------------------------------
-closed.mon.crt <- subset(closed.pipe, create.year == 2016)
+closed.mon.crt <- subset(closed.pipe, created %within% date.filter) #DATE
 closed.limit <- max(closed.mon.crt$create.month)
 closed.limit <- as.numeric(closed.limit)
 print(closed.limit)
@@ -606,7 +861,7 @@ closed.mon.crt <- subset(closed.mon.crt, select=c(Opp.No, DPUID, Create.Stage, D
                                                Size.Type, TCV))
 
 
-open.mon.crt <- subset(open.pipe, create.year == 2016 & create.month <= closed.limit)
+open.mon.crt <- subset(open.pipe, created %within% date.filter) #DATE
 
 open.mon.crt <- subset(open.mon.crt, select=c(Opp.No, DPUID, Create.Stage, Deal.Size, Sector.F,
                                       Service.Line, 
@@ -622,7 +877,16 @@ monthly.create.data <- dplyr::tbl_df(comb.data) %>%
            #Industry, 
            Size.Type) %>%
   #filter(Create.Stage != 'Closed') %>%
-  summarise(month.avg.tcv = sum(TCV)/9) #ADAMIANGRUBER
+  summarise(month.avg.tcv = (sum(TCV)/9)/1000000) %>%
+  ungroup()
+
+mc.small <- monthly.create.data %>%
+  filter(Size.Type == 'Small')
+
+monthly.create.data <- monthly.create.data %>%
+  mutate(Size.Type = 'Total')
+
+monthly.create.data <- rbind(monthly.create.data, mc.small)
 
 
 #Absolute Yield Curves----------------------------------------------------------------
@@ -645,7 +909,14 @@ closed.pipe$IMT.smush.1 <- ifelse(closed.pipe$Edge.Region.Name == 'US'
                                   | closed.pipe$Edge.Region.Name == 'US Federal',
                                   'US & US Federal', 'Canada')
 
-#Deal Profile 1: Identified x All IMT x <$1M x AIC-------------------------------------
+##################################################################
+##################################################################
+######## curves use 2015 & 2016 pipeline to project steady state. 
+######## if updates to curves are required reach out to project team
+##################################################################
+##################################################################
+
+#Deal Profile 1: Identified x All IMT x <$1M x AIC------------------------------------- #DATE
 abs.dp.1 <- tbl_df(closed.pipe) %>%
   group_by(size.smush, Service.Line, mo.bin) %>%
   filter(Won.Lost.Year == 2015 | Won.Lost.Year == 2016, Service.Line == 'AIC',
@@ -1252,13 +1523,21 @@ abs.bind <- rbind(abs.dp.1, abs.dp.2, abs.dp.3, abs.dp.4, abs.dp.5, abs.dp.6, ab
                   abs.dp.27, abs.dp.30, abs.dp.32, abs.dp.33, abs.dp.34, abs.dp.36, abs.dp.39,
                   abs.dp.42, abs.dp.44, abs.dp.45)
 
+abs.bind$yield[is.na(abs.bind$yield)] <- 0
 abs.yields <-dcast(abs.bind, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
+
+#Put new working directory
+setwd("~/gbs-na-automation/Unsmoothed Curves")
 write.csv(abs.yields, "unsmoothed abs yields.csv")
 
-#MANUAL SMOOTH REQUIRED
+#STOP HERE TO SMOOTH UPDATED CURVES
 
 #unsmoothed.abs.yields <- read.csv("~/NA GBS Strategic Work/R Content/Outputs/unsmoothed abs yields.csv")
-unsmoothed.abs.yields <- read.csv("~/gbs-na-automation/Output Data/unsmoothed abs yields.csv")
+
+unsmoothed.abs.yields <- read.csv("~/gbs-na-automation/Smoothed Curves/smoothed abs yields.csv")
+setwd("~/gbs-na-automation")
+
+#Reset to old working directory
 
 library(tidyr)
 
@@ -1272,7 +1551,9 @@ abs.melt$MonthBin <- sapply(strsplit(abs.melt$MonthBin, split='X', fixed=TRUE), 
 #dpuid.dp.match <- read.csv("~/NA GBS Strategic Work/Data Sources/dpuid.dp.match.csv")
 
 #Server read in
-dpuid.dp.match <- read.csv("~/gbs-na-automation/Mapping Tables/dpuid.dp.match.csv")
+directory <- paste0(getwd(), "/Mapping Tables")
+
+dpuid.dp.match <- read.csv(paste0(directory, '/', "dpuid.dp.match.csv"))
 
 dpuid.dp.match$DP.mobin <- with(dpuid.dp.match, paste(AGDPID, mo.bin, sep = " "))
 abs.melt$DP.mobin <- with(abs.melt, paste(Deal.Profile, MonthBin, sep = " "))
@@ -2045,10 +2326,16 @@ rel.w.bind <- rbind(rel.w.dp.1, rel.w.dp.2, rel.w.dp.3, rel.w.dp.4, rel.w.dp.5,
 #dpuid.dp.match$space.junk <- cube.sj$Total.TCV[match(dpuid.dp.match$sj.id, cube.sj$sj.id)]
 #dpuid.dp.match$yield.sj <- with(dpuid.dp.match, won.tcv/(total.sum.tcv+Total.TCV))
 
-
+rel.w.bind$yield[is.na(rel.w.bind$yield)] <- 0
 rel.w.yields <-dcast(rel.w.bind, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
 
 
+setwd("~/gbs-na-automation/Unsmoothed Curves")
+write.csv(rel.w.yields, 'unsmoothed rel yields.csv', row.names = F)
+#Stop here to smooth updated curves
+
+rel.w.yields <- read.csv("~/gbs-na-automation/Smoothed Curves/smoothed rel yields.csv")
+setwd("~/gbs-na-automation")
 
 #Relative Lost Yield Curves---------------------------------------------------------------------
 #Deal Profile 1: Identified x All IMT x <$1M x AIC-------------------------------------
@@ -2761,12 +3048,19 @@ rel.l.dplist <- rbind(rel.l.dp1, rel.l.dp2, rel.l.dp3, rel.l.dp4, rel.l.dp5,
                rel.l.dp33, rel.l.dp34, rel.l.dp36, rel.l.dp39, rel.l.dp42,
                rel.l.dp44, rel.l.dp45)
 
+rel.l.bind$yield[is.na(rel.l.bind$yield)] <- 0
 rel.l.yields <-dcast(rel.l.dplist, Deal.Profile + IMT + Service.Line + Deal.Size + Create.Stage ~ mo.bin, value.var = c('yield'))
 
 #Adjusting Absolute Curves-----------------------------------------------------------------------
+##################################################################
+##################################################################
+######## curves use 2015 & 2016 pipeline to project steady state. 
+######## if updates to curves are required reach out to project team
+##################################################################
+##################################################################
 #re-structure closed.cube.F by removing Canada & Federal
 adj.tbl <- closed.cube.F %>%
-  filter(date >= '2015-01-01',
+  filter(date >= '2015-01-01', #DATE
          #!Sector %in% c('Canada', 'US Federal'),
          !is.na(Sector)) %>%
   mutate(year = year(date),
@@ -2775,13 +3069,13 @@ adj.tbl <- closed.cube.F %>%
 
 #calculate yield by deal size
 tbl15 <- adj.tbl %>%
-  filter(year == 2016) %>%
+  filter(year == 2016) %>% #DATE
   group_by(Deal.Size) %>%
   summarize(yield15 = sum(Won)/sum(Won, Not.Won))
 
 #calculate yield by deal size and sector & then merge in tbl15 to get adjustment factor
 tbl16 <- adj.tbl %>%
-  filter(year == 2016, Sector != '') %>%
+  filter(year == 2016, Sector != '') %>% #DATE
   group_by(Deal.Size, Sector) %>%
   summarize(yield16 = sum(Won)/sum(Won, Not.Won)) %>%
   left_join(tbl15, by = 'Deal.Size') %>%
@@ -2793,7 +3087,6 @@ tbl16 <- adj.tbl %>%
 mapper <- unique(adj.tbl %>% select(DPUID, Size.Type, Create.Stage:Service.Line))
 
 
-#yo dis might be broke
 adjusted.abs <- abs.yields.F %>%
   gather(Month, "yield", `0`:`24`) %>%
   mutate(yield = as.numeric(yield), 
@@ -2809,7 +3102,7 @@ adjusted.abs <- abs.yields.F %>%
 
 
 # OPEN PIPELINE MODEL THING -----------------------------------------------
-tcv.rollup <- open.pipe %>%
+tcv.rollup <- open.pipe.2 %>%
   filter(deal.profile != 0, SSM.Step.Name != 'Won') %>%
   group_by(DPUID, Size.Type, deal.profile, age.month) %>%
   summarise(tcv = sum(TCV, na.rm = T)) %>%
@@ -2817,6 +3110,7 @@ tcv.rollup <- open.pipe %>%
   mutate(DPUID = toupper(DPUID))
 
 #code for dummy curvies
+#LOOK HERE GRUBER - make sure when relative curves are smoothed that correct object is referenced here
 rel.w.yields$status <- 'WON'
 rel.l.yields$status <- 'LOST'
 
@@ -2899,7 +3193,7 @@ final.open.all <- cascade %>%
   group_by(Sector, quarter) %>%
   summarise(tcv = sum(won.tcv)/1e6) %>%
   ungroup() %>%
-  mutate(Size.Type = 'All')
+  mutate(Size.Type = 'Total')
 
 final.open.small <- cascade %>%
   filter(quarter %in% quarts$quarter, Size.Type == 'Small') %>%
@@ -2912,13 +3206,18 @@ final.open <- final.open %>%
   group_by(Size.Type, quarter) %>%
   summarise(tcv = sum(tcv)) %>%
   ungroup() %>%
-  mutate(Sector = 'North America')
+  mutate(Sector = 'NA')
 
-final.open <- rbind(final.open.small, final.open.all, final.open)
+final.open <- rbind(final.open.small, final.open.all, final.open) %>%
+  mutate(year = substr(quarter, 1, 4),
+         q = substr(quarter, 6, 6)) %>%
+  select(Sector, Size.Type, year, q, tcv)
 
 
 
 #Pasting-------------------------------------------------------------------------------------
+#directory <- getwd()
+
 setwd("~/gbs-na-automation/Model Template")
 #wb <- openxlsx::loadWorkbook("GBS Scenario Model - Template.xlsm")
 #library(readxl)
@@ -2959,6 +3258,8 @@ write.csv(final.open, 'op.csv', row.names = F)
 
 # run vbscript to move outputs to GBS Scenario Model
 shell.exec("C:/Users/SCIP2/Documents/gbs-na-automation/Scripts/pipe.vbs") 
+
+message('THE END')
 
 
 #######THIS STUFF HERE GOT CUT OUT - WE NEED TO FIGURE OUT WHAT TO DO W REL CURVES
