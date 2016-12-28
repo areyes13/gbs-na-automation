@@ -1,3 +1,30 @@
+#Data cleanup----------------------------------------------------------------------------------
+#load EXCEL INPUT DATA workbook
+setwd("C:/Users/SCIP2/Box Sync/NA GBS Pipeline Final Deliverables/Back-end Input Data")
+directory <- paste0(getwd(), "/Reports for Scorecard")
+
+filename <- list.files(directory)
+
+library(readxl)
+dtl.open <- read_excel(paste(directory, filename, sep = '/'))
+
+start.row <- which(dtl.open[,1] == 'Opp No')
+print(start.row)
+
+#colnames(dtl.open) <- dtl.open[start.row,]
+#dtl.open <- dtl.open[start.row+1:length(dtl.open$`Opp No`),]
+#dtl.open <- dtl.open[rowSums(is.na(dtl.open)) != ncol(dtl.open),]
+
+dtl.open <- read_excel(paste(directory, filename, sep = '/'),
+                       skip = start.row)
+
+#Field Name Cleanup
+colnames(dtl.open) <- str_replace_all(colnames(dtl.open), "[^[:alnum:]]", ".")
+
+#CLEAN UP DATES 
+dtl.open$S.S.Update.Date <- ymd(dtl.open$S.S.Update.Date)
+dtl.open$Opp.Create.Date <- ymd(dtl.open$Opp.Create.Date)
+
 #OI Heat Map------------------------------------------------------------------------------------
 setwd("~/NA GBS Strategic Work/Data Sources/Open Pipeline/Heat Map")
 
